@@ -22,7 +22,7 @@ Dokumen mencakup:
 3.  Activity Owner
 4.  Activity Courier
 5.  Activity Order
-6.  Activity Payment Digital
+6.  Activity Payment QRIS
 7.  Activity Payment Cash
 8.  Activity Courier Assignment
 9.  Activity Delivery
@@ -57,7 +57,6 @@ Tiga aktor utama:
 
 Sistem eksternal yang berinteraksi secara teknis:
 
--   payment provider untuk digital payment
 -   Firebase Cloud Messaging untuk push notification bila digunakan
 -   Google Maps / Location Service sebagai pendukung lokasi dan
     visualisasi peta
@@ -71,7 +70,7 @@ Create Order
   ↓
 Select Payment
   ↓
-Payment Processing / Confirmation
+Payment follows QRIS or CASH workflow
   ↓
 Owner Receives & Processes Order
   ↓
@@ -187,7 +186,7 @@ DIGITAL
 PAYMENT_GATEWAY
 ```
 
-QRIS merupakan metode pembayaran berbasis QRIS yang disediakan melalui aplikasi.
+QRIS merupakan Static QRIS milik Berkah Water yang ditampilkan aplikasi dari Active QRIS configuration pada `business_settings`.
 
 Active QRIS merupakan QRIS yang saat ini ditetapkan Owner sebagai QRIS yang digunakan customer.
 
@@ -332,14 +331,13 @@ Completion order tetap merupakan bagian dari delivery/order workflow.
 # 3. Use Case Diagram
 
 Use Case menggambarkan fungsi utama yang tersedia untuk tiga role dan
-integrasi payment digital.
+workflow payment QRIS/CASH.
 
 ``` mermaid
 flowchart LR
     C[Customer]
     O[Owner / Pemilik Depot]
     D[Courier / Pengantar]
-    M[payment provider]
 
     subgraph K["KYŪSUI System"]
         UC1((Register))
@@ -347,8 +345,9 @@ flowchart LR
         UC3((Create Order))
         UC4((Set Delivery Location))
         UC5((Select Payment Method))
-        UC6((Pay Digital))
-        UC7((Payment Confirmation))
+        UC6((View Static QRIS / Upload QRIS Proof))
+        UC7((Review QRIS Proof))
+        UC21((Confirm Cash: Uang Diterima))
         UC8((View Order Status))
         UC9((View Order History))
         UC10((Track Courier))
@@ -390,10 +389,8 @@ flowchart LR
     D --> UC17
     D --> UC18
     D --> UC19
+    D --> UC21
     D --> UC20
-
-    UC6 --> M
-    M --> UC7
 
     UC3 -. includes .-> UC4
     UC3 -. includes .-> UC5
@@ -430,15 +427,12 @@ flowchart TD
     J --> K[Select Payment Method]
 
     K --> L{Payment Method}
-    L -- Digital --> M[Pay via payment provider]
-    L -- Cash --> N[Cash Payment Flow]
-
-    M --> O{Payment Confirmed?}
-    O -- Yes --> P[View Order Status]
-    O -- No --> Q[Show Payment Pending / Failed]
-    Q --> K
-
-    N --> P
+    L -- QRIS --> M[Display Active Static QRIS]
+    M --> N[Customer Pays Externally]
+    N --> O[Upload QRIS Proof]
+    O --> P[Show WAITING_VERIFICATION]
+    L -- CASH --> Q[Show Cash on Delivery instruction]
+    Q --> P
 
     G -- Orders --> P
     P --> R{Delivery Active?}
@@ -475,14 +469,14 @@ flowchart TD
     E --> F[Select Order]
     F --> G[View Customer, Quantity, Location, Payment Status]
 
-    G --> H{Payment Status / Business Rule}
-    H -- Ready to Process --> I[Process Order]
-    H -- Pending / Requires Confirmation --> J[Wait for Valid Payment Confirmation]
-    J --> H
-
-    I --> K{Ready for Delivery?}
-    K -- No --> I
-    K -- Yes --> L[Open Courier Assignment]
+    G --> H{Payment Method / Status}
+    H -- QRIS PAID --> I[Process Order]
+    H -- QRIS WAITING_VERIFICATION --> J[Review QRIS Proof]
+    J --> K{Approve?}
+    K -- Yes --> I
+    K -- No --> H
+    H -- CASH PENDING or PAID --> I
+    I --> L[Open Courier Assignment]
 
     L --> M[Select Available Courier]
     M --> N[Create Assignment]
@@ -502,10 +496,7 @@ flowchart TD
     U --> V([End])
 ```
 
-Owner hanya melakukan pemrosesan sesuai status dan authorization
-backend. Owner workflow tidak mengasumsikan bahwa payment pending
-otomatis boleh diproses. Keputusan tersebut masih unresolved pada master
-specification.
+Owner melakukan Manual Owner Verification untuk QRIS Proof dan tidak melakukan Cash confirmation. CASH dapat diproses saat payment masih `PENDING`; QRIS memerlukan `PAID` sebelum processing.
 
 ------------------------------------------------------------------------
 
@@ -568,23 +559,18 @@ flowchart TD
     G --> H[Select Payment Method]
 
     H --> I{Payment Method}
-    I -- Digital --> J[Create payment provider Transaction]
-    I -- Cash --> K[Set Cash Payment Pending]
-
-    J --> L[Customer Performs Digital Payment]
-    L --> M[Receive Verified Payment Result]
-    M --> N{Payment Confirmed?}
-
-    N -- No --> O[Payment Pending / Failed]
-    O --> H
-    N -- Yes --> P[Order Ready for Processing]
-
-    K --> Q{Cash Confirmed?}
-    Q -- No --> R[Remain Pending According to Cash Policy]
-    R --> Q
-    Q -- Yes --> P
-
+    I -- QRIS --> J[Persist payment = PENDING]
+    J --> K[Display Active Static QRIS]
+    K --> L[Customer Pays Externally]
+    L --> M[Upload QRIS Proof]
+    M --> N[Payment = WAITING_VERIFICATION]
+    N --> O{Owner Approves Proof?}
+    O -- No --> J
+    O -- Yes --> P[Payment = PAID]
+    I -- CASH --> Q[Persist payment = PENDING]
+    Q --> R[Order Ready for Processing]
     P --> S[Owner Receives Order]
+    R --> S
     S --> T[Owner Processes Order]
     T --> U[Order Ready for Delivery]
     U --> V[Courier Assignment]
@@ -596,42 +582,31 @@ flowchart TD
     AA --> AB([End])
 ```
 
-Catatan: cabang Cash sengaja mempertahankan decision point karena pihak
-dan waktu konfirmasi Cash belum dikunci sebagai business rule.
+Untuk CASH, Assigned Courier mengonfirmasi `Uang Diterima` setelah pembayaran tunai diterima pada delivery. Konfirmasi mengubah payment dari `PENDING` menjadi `PAID` tanpa menghalangi proses order sebelumnya.
 
 ------------------------------------------------------------------------
 
-# 8. Activity Diagram --- Payment Digital
+# 8. Activity Diagram --- Payment QRIS
 
 ``` mermaid
 flowchart TD
-    A([Start]) --> B[Customer Selects Digital Payment]
-    B --> C[KYŪSUI Creates Payment Record]
-    C --> D[Backend Creates / Prepares payment provider Transaction]
-    D --> E[Return Payment Information]
-    E --> F[Customer Completes Payment at payment provider]
-    F --> G[payment provider Sends Webhook]
-    G --> H[Laravel Verifies Webhook]
-    H --> I{Webhook / Transaction Valid?}
-
-    I -- No --> J[Reject / Log Invalid Notification]
-    J --> K([End])
-
-    I -- Yes --> L[Process Idempotently]
-    L --> M[Update Payment Status]
-    M --> N{Payment Confirmed?}
-
-    N -- Yes --> O[Update Related Order Payment State]
-    N -- No --> P[Keep Payment Pending / Failed]
-
-    O --> Q[Return / Refresh Order Status]
-    P --> Q
-    Q --> R([End])
+    A([Start]) --> B[Customer Selects QRIS]
+    B --> C[Persist payment = PENDING]
+    C --> D[Read Active QRIS from business_settings]
+    D --> E[Display Static QRIS]
+    E --> F[Customer Pays Externally]
+    F --> G[Customer Uploads QRIS Proof]
+    G --> H[Payment = WAITING_VERIFICATION]
+    H --> I[Owner Reviews Proof]
+    I --> J{Approve?}
+    J -- Yes --> K[Payment = PAID]
+    J -- No --> L[Payment = PENDING]
+    L --> M[Customer may upload replacement proof]
+    M --> G
+    K --> N([End])
 ```
 
-payment provider credential berada di backend; client tidak menentukan sendiri
-status `paid`. Webhook harus diverifikasi dan diproses idempotently.
-fileciteturn1file4
+Customer tidak dapat menetapkan sendiri status `PAID`. Re-upload QRIS Proof memperbarui payment yang sama dan tidak membuat payment record baru.
 
 ------------------------------------------------------------------------
 
@@ -639,28 +614,20 @@ status `paid`. Webhook harus diverifikasi dan diproses idempotently.
 
 ``` mermaid
 flowchart TD
-    A([Start]) --> B[Customer Selects Cash]
-    B --> C[Create / Update Cash Payment Record]
-    C --> D[Payment Status = Pending Confirmation]
-    D --> E[Order Continues According to Cash Policy]
-
-    E --> F{Cash Confirmation Rule Defined?}
-    F -- No --> G[Remain as Unresolved Business Decision]
-    G --> H([End])
-
-    F -- Yes --> I[Authorized Party Confirms Cash Payment]
-    I --> J{Confirmed?}
-    J -- No --> K[Keep Pending]
-    J -- Yes --> L[Payment Status = Confirmed]
-    K --> H
-    L --> M[Order Payment State Updated]
-    M --> N([End])
+    A([Start]) --> B[Customer Selects CASH]
+    B --> C[Persist payment = PENDING]
+    C --> D[Order proceeds through processing, assignment, and delivery]
+    D --> E[Customer pays cash to Assigned Courier]
+    E --> F[Assigned Courier selects Uang Diterima]
+    F --> G[Backend validates Courier authentication and active assignment]
+    G --> H{Valid CASH payment and assignment?}
+    H -- No --> I[Reject confirmation; payment remains PENDING]
+    H -- Yes --> J[Payment = PAID]
+    I --> K([End])
+    J --> K
 ```
 
-Diagram ini sengaja tidak menunjuk customer, owner, atau courier sebagai
-pihak konfirmasi Cash karena requirement final belum menetapkannya.
-UI/UX menetapkan Cash sebagai "Menunggu Konfirmasi".
-fileciteturn1file6
+Customer dan Owner tidak dapat mengonfirmasi CASH. Hanya Assigned Courier yang dapat melakukan aksi `Uang Diterima`.
 
 ------------------------------------------------------------------------
 
@@ -828,27 +795,31 @@ sequenceDiagram
     participant A as Android
     participant API as Laravel API
     participant DB as MySQL
-    participant M as payment provider
+    actor O as Owner
+    actor D as Courier
 
-    C->>A: Select payment method
-
-    alt Digital / payment provider
-        A->>API: Create payment
-        API->>DB: Save pending payment
-        API->>M: Create / prepare transaction
-        M-->>API: Transaction information
-        API-->>A: Payment information
-        A->>M: Complete payment
-        M-->>API: Webhook
-        API->>API: Verify webhook
-        API->>DB: Update payment status
-        API->>DB: Update order payment state
-        API-->>A: Updated order/payment status
-    else Cash
-        A->>API: Select Cash
-        API->>DB: Save Cash payment as pending
-        API-->>A: Pending confirmation
-        A-->>C: Show Cash pending state
+    alt QRIS
+        C->>A: Select QRIS
+        A->>API: Create order/payment with QRIS
+        API->>DB: Persist payment = PENDING
+        A->>API: Get Active QRIS
+        API->>DB: Read business_settings
+        API-->>A: Static QRIS
+        C->>A: Upload QRIS Proof after external payment
+        A->>API: Upload QRIS Proof
+        API->>DB: Update payment = WAITING_VERIFICATION
+        O->>API: Approve or reject QRIS Proof
+        API->>DB: Update payment = PAID or PENDING
+        API-->>A: Authoritative payment status
+    else CASH
+        C->>A: Select CASH
+        A->>API: Create order/payment with CASH
+        API->>DB: Persist payment = PENDING
+        API-->>A: Cash on Delivery instruction
+        Note over API,DB: Order may proceed while CASH is PENDING
+        D->>API: Uang Diterima
+        API->>API: Validate Courier authentication and active assignment
+        API->>DB: Update payment = PAID
     end
 ```
 
@@ -946,7 +917,7 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Menunggu_Pembayaran: Order created
 
-    Menunggu_Pembayaran --> Menunggu_Diproses: Payment confirmed
+    Menunggu_Pembayaran --> Menunggu_Diproses: QRIS PAID or CASH selected
     Menunggu_Pembayaran --> Menunggu_Pembayaran: Payment pending / retry
 
     Menunggu_Diproses --> Diproses: Owner processes order
@@ -966,22 +937,15 @@ sebagai requirement final.
 
 ``` mermaid
 stateDiagram-v2
-    [*] --> Pending: Payment record created
-
-    Pending --> Processing: Digital payment initiated
-    Processing --> Paid: Provider confirms success
-    Processing --> Failed: Provider reports failure
-
-    Pending --> Confirmed_Cash: Cash confirmation
-    Pending --> Pending: Cash still awaiting confirmation
-
-    Paid --> [*]
-    Confirmed_Cash --> [*]
-    Failed --> Pending: Retry / new payment attempt
+    [*] --> PENDING: Payment record created
+    PENDING --> WAITING_VERIFICATION: QRIS Proof uploaded
+    WAITING_VERIFICATION --> PAID: Owner approves QRIS Proof
+    WAITING_VERIFICATION --> PENDING: Owner rejects QRIS Proof
+    PENDING --> PAID: Assigned Courier confirms CASH
+    PAID --> [*]
 ```
 
-`Confirmed_Cash` merepresentasikan hasil konfirmasi, bukan menetapkan
-siapa yang melakukan konfirmasi.
+Transition `PENDING` ke `WAITING_VERIFICATION` hanya berlaku untuk QRIS. Transition `PENDING` ke `PAID` hanya berlaku untuk CASH setelah validasi Assigned Courier.
 
 ------------------------------------------------------------------------
 
@@ -995,7 +959,6 @@ flowchart LR
     C[Customer]
     O[Owner / Pemilik Depot]
     D[Courier / Pengantar]
-    M[payment provider]
     F[Firebase Cloud Messaging]
 
     S((KYŪSUI System))
@@ -1008,9 +971,6 @@ flowchart LR
 
     D -->|Login, assignment, delivery status, GPS location| S
     S -->|Assigned orders, customer/location information, delivery status| D
-
-    S -->|Payment transaction request| M
-    M -->|Payment result / webhook| S
 
     S -->|Push notification event| F
     F -->|Push notification delivery| C
@@ -1030,7 +990,6 @@ flowchart LR
     C[Customer]
     O[Owner]
     D[Courier]
-    M[payment provider]
 
     P1((1. Authentication))
     P2((2. Order Management))
@@ -1064,8 +1023,7 @@ flowchart LR
     O -->|Payment verification/view| P3
     P3 -->|Payment information| O
     P3 <--> DS3
-    P3 -->|Digital transaction| M
-    M -->|Verified payment result| P3
+    D -->|CASH Uang Diterima| P3
 
     O -->|Courier assignment| P4
     P4 -->|Assignment result| O
@@ -1101,13 +1059,12 @@ flowchart LR
     C[Customer]
     O[Owner]
     D[Courier]
-    M[payment provider]
 
     P21((2.1 Create Order))
     P22((2.2 Validate Order))
     P31((3.1 Create Payment))
-    P32((3.2 Process Digital Payment))
-    P33((3.3 Confirm Payment))
+    P32((3.2 Manage QRIS Proof))
+    P33((3.3 Verify QRIS / Confirm CASH))
     P23((2.3 Process Order))
     P41((4.1 Create Assignment))
     P42((4.2 Validate Assignment))
@@ -1132,10 +1089,11 @@ flowchart LR
     C -->|Payment method| P31
     P31 -->|Payment record| D3
 
-    P31 -->|Digital transaction| P32
-    P32 -->|Transaction request| M
-    M -->|Payment result/webhook| P33
-    P33 -->|Verified payment status| D3
+    P31 -->|QRIS Proof or CASH selection| P32
+    P32 -->|Payment status| D3
+    O -->|QRIS review action| P33
+    D -->|CASH Uang Diterima| P33
+    P33 -->|Validated payment status| D3
     P33 -->|Payment state| D2
     P33 -->|Payment result| C
 
@@ -1189,11 +1147,10 @@ flowchart LR
   Create Order   Order                    Order          Menunggu         2.1 Create Order
                                                          Pembayaran       
 
-  Digital        Payment Digital          Payment        Processing →     3.2--3.3
-  Payment                                                Paid/Failed      
+   QRIS           Payment QRIS             Payment        PENDING →        3.2--3.3
+   Payment                                                WAITING_VERIFICATION → PAID
 
-  Cash Payment   Payment Cash             Payment        Pending →        3.1--3.3
-                                                         Confirmed Cash   
+   Cash Payment   Payment Cash             Payment        PENDING → PAID   3.1--3.3
 
   Process Order  Owner                    Order          Menunggu         2.3
                                                          Diproses →       
@@ -1230,19 +1187,16 @@ flowchart TD
 
     F --> G{Payment Method}
 
-    G -- Digital --> H[payment provider Payment]
-    H --> I{Verified Payment?}
-    I -- No --> J[Pending / Failed]
-    J --> F
-    I -- Yes --> K[Payment Confirmed]
-
-    G -- Cash --> L[Cash Pending Confirmation]
-    L --> M{Cash Confirmed?}
-    M -- No --> N[Remain Pending According to Cash Policy]
-    N --> M
-    M -- Yes --> K
-
-    K --> O[Owner Receives Order]
+    G -- QRIS --> H[Display Active Static QRIS]
+    H --> I[Customer Pays Externally and Uploads QRIS Proof]
+    I --> J[WAITING_VERIFICATION]
+    J --> K{Owner Approves?}
+    K -- No --> L[PENDING: customer may re-upload]
+    L --> I
+    K -- Yes --> M[PAID]
+    G -- CASH --> N[PENDING: Cash on Delivery]
+    N --> O[Owner Receives Order]
+    M --> O
     O --> P[Owner Processes Order]
     P --> Q[Courier Assignment]
     Q --> R[Courier Receives Assignment]
@@ -1251,10 +1205,11 @@ flowchart TD
     T --> U[Customer Tracks Courier]
     U --> V{Customer Receives Order?}
     V -- No --> T
-    V -- Yes --> W[Completion]
-    W --> X[Order Status = Selesai]
-    X --> Y[Order Appears in History]
-    Y --> Z([END])
+    V -- Yes --> W[If CASH: Assigned Courier selects Uang Diterima]
+    W --> X[Completion]
+    X --> Y[Order Status = Selesai]
+    Y --> Z[Order Appears in History]
+    Z --> AA([END])
 ```
 
 ------------------------------------------------------------------------
@@ -1295,24 +1250,16 @@ Action
 
 ## 27.3 Payment
 
-Untuk digital payment:
+Untuk QRIS:
 
 ``` text
-Customer
-  ↓
-Laravel
-  ↓
-payment provider
-  ↓
-Verified Webhook
-  ↓
-Laravel
-  ↓
-MySQL
+Customer → Android → Laravel API → MySQL
+Customer pays externally using Active Static QRIS
+Customer uploads QRIS Proof → WAITING_VERIFICATION
+Owner approves/rejects through Laravel API → PAID/PENDING
 ```
 
-Client tidak boleh menetapkan sendiri status pembayaran sebagai paid.
-fileciteturn1file4
+Untuk CASH, Assigned Courier mengirim aksi `Uang Diterima` ke Laravel API setelah menerima uang. Backend memvalidasi authentication, assignment, payment method, dan payment state sebelum menetapkan `PAID`. Client tidak dapat menetapkan sendiri status pembayaran.
 
 ## 27.4 Tracking
 
@@ -1362,35 +1309,21 @@ Workflow dokumen ini mempertahankan urutan tersebut.
 Diagram tidak boleh dianggap menetapkan keputusan bisnis yang belum
 disetujui.
 
-### UD-01 --- Cash Confirmation
-
-**Question:** Siapa yang mengonfirmasi pembayaran Cash dan pada titik
-proses mana?
-
-**Current:** UNRESOLVED.
-
-### UD-02 --- Cash Processing
-
-**Question:** Apakah Owner boleh memproses order Cash ketika payment
-masih pending?
-
-**Current:** UNRESOLVED.
-
-### UD-03 --- Cancellation
+### UD-01 --- Cancellation
 
 **Question:** Apakah Customer dapat membatalkan order dan pada state
 mana?
 
 **Current:** UNRESOLVED.
 
-### UD-04 --- Assignment Acceptance
+### UD-02 --- Assignment Acceptance
 
 **Question:** Apakah Courier harus menerima atau dapat menolak
 assignment?
 
 **Current:** UNRESOLVED.
 
-### UD-05 --- Tracking Interval
+### UD-03 --- Tracking Interval
 
 **Question:** Berapa interval pengiriman dan pembaruan lokasi GPS?
 
@@ -1412,11 +1345,13 @@ ORDER CREATION
       ↓
 PAYMENT
  ┌────┴────┐
- ↓         ↓
-DIGITAL    CASH
- ↓         ↓
-PAYMENT_GATEWAY   CONFIRMATION
- └────┬────┘
+  ↓         ↓
+ QRIS      CASH
+  ↓         ↓
+STATIC QRIS +     CASH ON DELIVERY +
+MANUAL OWNER      ASSIGNED COURIER
+VERIFICATION      CONFIRMATION
+  └────┬────┘
       ↓
 ORDER PROCESSING
       ↓

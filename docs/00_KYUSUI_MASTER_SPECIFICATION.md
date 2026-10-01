@@ -406,7 +406,7 @@ Status pembayaran harus dapat diketahui dan digunakan dalam proses pengelolaan p
 
 Pelanggan memilih metode pembayaran yang memang tersedia pada sistem.
 
-> Dokumen utama menetapkan adanya pembayaran dan status pembayaran, tetapi tidak menetapkan provider pembayaran tertentu maupun daftar metode pembayaran tertentu.
+> Keputusan payment final untuk Berkah Water adalah QRIS dan CASH. Detail lifecycle dan authorization mengikuti `08_KYUSUI_PAYMENT_SPECIFICATION_REBUILT.md`.
 
 ### BR-13 — Tracking During Delivery
 
@@ -466,17 +466,16 @@ Pesanan Dapat Dilihat Dalam Riwayat
 [END]
 ```
 
-### Workflow yang Belum Dikunci
+### Workflow Payment Final
 
-Belum ditentukan secara eksplisit:
+Aturan payment yang berlaku:
 
-- apakah pembayaran wajib berhasil sebelum depot menerima pesanan;
-- apakah depot boleh memproses pesanan dengan pembayaran yang masih pending;
-- apakah pelanggan dapat membatalkan pesanan;
-- siapa yang mengonfirmasi pesanan diterima;
-- apakah pengantar harus menerima/menolak assignment.
+- QRIS menggunakan Static QRIS Berkah Water yang aktif; customer membayar secara eksternal dan mengunggah QRIS Proof.
+- Owner melakukan Manual Owner Verification atas QRIS Proof. Approval mengubah payment menjadi `PAID`; rejection mengembalikan payment ke `PENDING` agar customer dapat upload ulang tanpa membuat payment record baru.
+- CASH adalah Cash on Delivery. Order CASH dapat diproses dan dikirim ketika payment masih `PENDING`.
+- Hanya Assigned Courier yang dapat mengonfirmasi CASH melalui aksi `Uang Diterima`; customer dan Owner tidak dapat melakukan konfirmasi tersebut.
 
-Hal-hal tersebut bukan requirement final sampai dilakukan validasi kebutuhan.
+Cancellation workflow dan penerimaan/penolakan assignment tetap belum dikunci dan tidak diubah oleh keputusan payment ini.
 
 ---
 
@@ -498,19 +497,28 @@ Sistem harus dapat merepresentasikan kondisi transaksi pembayaran sehingga:
 - pemilik depot dapat melakukan pengecekan;
 - status transaksi dapat digunakan dalam pengelolaan pesanan.
 
-### 15.3 Payment Provider
+### 15.3 Payment Method and Verification
 
-Provider pembayaran belum ditentukan dalam master business requirements.
+Payment Method yang tersedia hanya:
 
-Nama provider tertentu tidak boleh dianggap sebagai keputusan final hanya berdasarkan jurnal pendukung.
+```text
+QRIS
+CASH
+```
 
-### 15.4 Payment Method
+QRIS adalah Static QRIS milik Berkah Water. Hanya satu Active QRIS digunakan sebagai konfigurasi bisnis. Customer melihat QRIS, membayar secara eksternal, lalu upload QRIS Proof. Owner melakukan Manual Owner Verification.
 
-Daftar metode pembayaran spesifik belum dikunci.
+CASH adalah Cash on Delivery. Customer membayar tunai kepada Courier saat delivery; Assigned Courier mengonfirmasi `Uang Diterima` setelah backend memvalidasi assignment.
 
-Requirement yang valid adalah:
+Payment Status yang digunakan hanya:
 
-> Pelanggan dapat menggunakan metode pembayaran yang tersedia pada sistem.
+```text
+PENDING
+WAITING_VERIFICATION
+PAID
+```
+
+Tidak ada payment gateway, payment provider integration, dynamic QRIS, provider webhook, atau automatic payment verification.
 
 ---
 
@@ -816,8 +824,9 @@ Semua hal tersebut merupakan keputusan lanjutan.
 | Order Status | Kelompok 7 | Confirmed |
 | Order History | Kelompok 7 | Confirmed |
 | Logout | Kelompok 7 | Confirmed |
-| Payment Provider | Belum ditentukan | TBD |
-| Payment Method Detail | Belum ditentukan | TBD |
+| Payment Method Detail | Payment decision final | Confirmed: QRIS / CASH |
+| QRIS Verification | Payment decision final | Confirmed: manual Owner verification |
+| CASH Confirmation | Payment decision final | Confirmed: Assigned Courier |
 | GPS Interval | Belum ditentukan | TBD |
 | GPS Accuracy | Belum ditentukan | TBD |
 | ETA | Belum ditentukan | TBD |
@@ -867,7 +876,7 @@ Database engine
 REST API atau GraphQL
 Authentication protocol
 Token mechanism
-Payment gateway provider
+Static QRIS configuration and payment verification workflow
 Map provider
 GPS implementation
 Background location mechanism
@@ -886,16 +895,6 @@ Keputusan tersebut tidak boleh mengubah kebutuhan bisnis yang telah ditetapkan d
 ## 23. Requirements Not Yet Defined
 
 Sebelum implementasi final, beberapa kebutuhan masih memerlukan validasi dengan pihak Berkah Water.
-
-### Payment
-
-- Metode pembayaran apa saja yang benar-benar diterima?
-- Apakah pembayaran cash diperbolehkan?
-- Apakah pembayaran harus berhasil sebelum pesanan diproses?
-- Siapa yang melakukan verifikasi pembayaran?
-- Bagaimana menangani pembayaran gagal?
-- Bagaimana menangani pembatalan pembayaran?
-- Bagaimana menangani refund?
 
 ### Order
 

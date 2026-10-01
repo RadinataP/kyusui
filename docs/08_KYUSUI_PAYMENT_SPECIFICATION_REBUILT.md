@@ -18,7 +18,7 @@
 `06_KYUSUI_API_SPECIFICATION.md` →
 `07_KYUSUI_ANDROID_ARCHITECTURE.md`
 
-> **Payment Architecture Decision Override:** Dokumen ini adalah sumber kebenaran baru untuk domain payment. Keputusan payment baru di dokumen ini menggantikan keputusan payment lama yang masih menggunakan Midtrans, payment gateway, provider transaction, webhook provider, dan status payment lama. Dokumen lain yang masih memuat keputusan lama harus diselaraskan secara terpisah.
+> **Payment Architecture Authority:** Dokumen ini adalah sumber kebenaran untuk domain payment. Seluruh dokumen KYŪSUI telah diselaraskan dengan QRIS static, Manual Owner Verification, dan Cash on Delivery dengan konfirmasi Assigned Courier.
 
 ------------------------------------------------------------------------
 
@@ -1642,7 +1642,7 @@ GET latest API state
 Authoritative UI state
 ```
 
-Dokumen notification yang masih menyebut Midtrans sebagai business source merupakan legacy conflict yang harus diselaraskan secara terpisah.
+Notification specification telah diselaraskan; payment notification hanya merepresentasikan QRIS Proof, hasil Manual Owner Verification, dan CASH confirmation.
 
 ------------------------------------------------------------------------
 
@@ -2144,195 +2144,35 @@ Keputusan payment yang dikunci:
 
 ------------------------------------------------------------------------
 
-# 49. Cross-Document Dependencies
+# 49. Cross-Document Synchronization
 
-Rebuild dokumen ini menyebabkan dependency berikut.
-
-## 49.1 `00_KYUSUI_MASTER_SPECIFICATION.md`
-
-Status:
+Audit payment final telah memverifikasi seluruh specification berikut terhadap contract canonical ini:
 
 ```text
-NO DIRECT CONFLICT ON PROVIDER
+Payment Method: QRIS / CASH
+Payment Status: PENDING / WAITING_VERIFICATION / PAID
+QRIS: Static QRIS, QRIS Proof, Manual Owner Verification
+CASH: Cash on Delivery, Assigned Courier, Uang Diterima
 ```
 
-Master Specification menyatakan provider dan daftar metode pembayaran spesifik belum ditentukan. Keputusan baru pada dokumen ini sekarang mengunci payment method dan architecture.
+| Document | Status | Payment alignment |
+|---|---|---|
+| `00_KYUSUI_MASTER_SPECIFICATION.md` | Synchronized | Final payment decision is locked. |
+| `01_KYUSUI_PROJECT_RULES.md` | Synchronized | No provider/gateway dependency is active. |
+| `02_KYUSUI_SYSTEM_ARCHITECTURE.md` | Synchronized | Backend is authority; no provider architecture is active. |
+| `03_KYUSUI_UI_UX_SPECIFICATION.md` | Synchronized | QRIS proof, verification state, and CASH UI are aligned. |
+| `04_KYUSUI_SYSTEM_WORKFLOW.md` | Synchronized | QRIS and CASH activities, sequences, states, and DFDs are aligned. |
+| `05_KYUSUI_DATABASE_SCHEMA.md` | Synchronized | `orders` 1:1 `payments`; Active QRIS uses `business_settings`. |
+| `06_KYUSUI_API_SPECIFICATION.md` | Synchronized | Business workflow endpoints only; no provider endpoints. |
+| `07_KYUSUI_ANDROID_ARCHITECTURE.md` | Synchronized | Android displays QRIS, uploads proof, and supports `Uang Diterima`. |
+| `09_KYUSUI_TRACKING_SPECIFICATION.md` | Synchronized | Active courier assignment remains CASH authorization context. |
+| `10_KYUSUI_NOTIFICATION_SPECIFICATION.md` | Synchronized | Payment events represent proof, approval/rejection, and CASH confirmation. |
+| `11_KYUSUI_TESTING_SPECIFICATION.md` | Synchronized | Tests cover QRIS re-upload and Assigned Courier authorization. |
+| `12_KYUSUI_VISUAL_DESIGN_SPECIFICATION.md` | Synchronized | Payment terminology and states are canonical. |
+| `13_KYUSUI_DATABASE_FINALIZATION.md` | Synchronized | Final database excludes provider transaction data. |
+| `13_KYUSUI_INTEGRATION_CONTRACT.md` | Synchronized | Integration follows the canonical payment contract. |
 
-## 49.2 `01_KYUSUI_PROJECT_RULES.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Dokumen tersebut masih menyebut:
-
-```text
-Digital Payment : Midtrans
-Cash Payment    : Cash
-```
-
-Payment section dan security rules yang masih khusus Midtrans harus diselaraskan pada revisi terpisah.
-
-## 49.3 `02_KYUSUI_SYSTEM_ARCHITECTURE.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Dokumen tersebut masih menggambarkan Midtrans, payment webhook, provider integration, dan payment service berbasis provider.
-
-Dokumen ini tidak mengubah file tersebut secara langsung.
-
-## 49.4 `03_KYUSUI_UI_UX_SPECIFICATION.md`
-
-Status:
-
-```text
-DEPENDENCY — PAYMENT UI MUST BE SYNCHRONIZED
-```
-
-UI harus merepresentasikan:
-
-```text
-QRIS
-CASH
-PENDING
-WAITING_VERIFICATION
-PAID
-```
-
-serta proof upload, QRIS verification result, dan Cash action pada Courier.
-
-## 49.5 `04_KYUSUI_SYSTEM_WORKFLOW.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Workflow masih menyebut Digital/Midtrans dan Cash confirmation unresolved. Cash processing rule juga harus diperbarui sehingga payment Cash `PENDING` tidak menghalangi proses/delivery.
-
-## 49.6 `05_KYUSUI_DATABASE_SCHEMA.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Database masih memiliki:
-
-```text
-payment_transactions
-provider_name
-provider_reference
-transaction_id
-provider_transaction_id
-idempotency_key
-raw_payload
-```
-
-dan status payment lama.
-
-Target payment concept pada dokumen ini adalah `payments` dengan field:
-
-```text
-id
-order_id
-payment_method
-payment_status
-amount
-proof_image
-verified_by
-verified_at
-created_at
-updated_at
-```
-
-## 49.7 `06_KYUSUI_API_SPECIFICATION.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-API masih memuat Midtrans, webhook, payment method lama, dan status lama. API perlu diselaraskan agar mendukung QRIS proof, Owner verification/rejection, active QRIS management, serta Courier Cash confirmation.
-
-## 49.8 `07_KYUSUI_ANDROID_ARCHITECTURE.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Android architecture masih mencantumkan Midtrans dan payment integration lama. Payment module Android harus mengikuti QRIS/Cash architecture ini.
-
-## 49.9 `09_KYUSUI_TRACKING_SPECIFICATION.md`
-
-Status:
-
-```text
-INDIRECT DEPENDENCY
-```
-
-Tidak ada perubahan tracking langsung. Namun Cash confirmation terjadi dalam delivery context sehingga Courier assignment dan delivery state harus tersedia sebagai authorization context.
-
-## 49.10 `10_KYUSUI_NOTIFICATION_SPECIFICATION.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Payment notification masih memiliki source/flow Midtrans dan status lama. Notification harus menjadi informational event untuk payment state baru.
-
-## 49.11 `11_KYUSUI_TESTING_SPECIFICATION.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Test payment masih mencantumkan Midtrans dan status lama. Test harus diganti ke QRIS/Cash state machine baru.
-
-## 49.12 `12_KYUSUI_VISUAL_DESIGN_SPECIFICATION.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Header dan payment references masih mencantumkan Midtrans. Visual payment state harus mengikuti tiga status canonical dan actor flow baru.
-
-## 49.13 `13_KYUSUI_DATABASE_FINALIZATION.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Decision register masih menetapkan Owner sebagai Cash confirmation actor dan status lama. Keputusan baru pada dokumen ini mengganti actor Cash menjadi Assigned Courier dan success state menjadi `PAID`.
-
-## 49.14 `13_KYUSUI_INTEGRATION_CONTRACT.md`
-
-Status:
-
-```text
-CONFLICT — REQUIRES SYNCHRONIZATION
-```
-
-Integration Contract masih memiliki payment assumptions Midtrans/provider. Contract harus mengikuti payment model baru sebelum implementation handoff.
+Tidak ada active cross-document payment conflict.
 
 ------------------------------------------------------------------------
 
