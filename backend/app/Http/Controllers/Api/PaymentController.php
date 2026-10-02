@@ -7,6 +7,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Events\BusinessActionOccurred;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PaymentResource;
 use App\Models\BusinessSetting;
 use App\Models\Order;
 use App\Models\Payment;
@@ -23,6 +24,35 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class PaymentController extends Controller
 {
+    public function history(Request $request): JsonResponse
+    {
+        $customer = $request->user()->customer;
+        abort_unless($customer !== null, 403, 'Profil customer tidak ditemukan.');
+
+        $validated = $request->validate([
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'payment_method' => ['sometimes', 'string', 'in:QRIS,CASH'],
+            'payment_status' => ['sometimes', 'string', 'in:PENDING,WAITING_VERIFICATION,PAID'],
+        ]);
+
+        $payments = Payment::query()
+            ->whereHas('order', fn ($query) => $query->where('customer_id', $customer->id))
+            ->when(isset($validated['payment_method']), fn ($query) => $query->where('method', $validated['payment_method']))
+            ->when(isset($validated['payment_status']), fn ($query) => $query->where('status', $validated['payment_status']))
+            ->latest('id')
+            ->paginate($validated['per_page'] ?? 20);
+
+        return response()->json([
+            'data' => PaymentResource::collection($payments->items()),
+            'meta' => [
+                'current_page' => $payments->currentPage(),
+                'per_page' => $payments->perPage(),
+                'total' => $payments->total(),
+            ],
+            'message' => 'Riwayat pembayaran berhasil dimuat.',
+        ], 200);
+    }
+
     public function activeQris(Request $request): JsonResponse
     {
         abort_unless(

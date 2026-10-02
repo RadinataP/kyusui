@@ -22,6 +22,21 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class OwnerController extends Controller
 {
+    public function verifyOrderPayment(Request $request, Order $order): JsonResponse
+    {
+        $this->authorizeOwner($request);
+        $validated = $request->validate([
+            'action' => ['required', 'string', 'in:APPROVE,REJECT,approve,reject'],
+            'note' => ['sometimes', 'string', 'max:500'],
+        ]);
+        $payment = $order->payment()->firstOrFail();
+        $action = strtolower($validated['action']);
+
+        return $action === 'approve'
+            ? $this->approve($request, $payment)
+            : $this->reject($request, $payment);
+    }
+
     public function qris(Request $request): JsonResponse
     {
         $this->authorizeOwner($request);

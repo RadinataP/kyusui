@@ -34,6 +34,8 @@ Route::prefix('v1')->group(function () {
         Route::get('profile', [ProfileController::class, 'show'])->name('api.v1.profile.show');
         Route::put('profile', [ProfileController::class, 'update'])->name('api.v1.profile.update');
         Route::get('notifications', [NotificationController::class, 'index'])->name('api.v1.notifications.index');
+        Route::post('notifications/device-token', [NotificationController::class, 'registerDeviceToken'])
+            ->name('api.v1.notifications.device-token');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('api.v1.notifications.read-all');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('api.v1.notifications.read');
         Route::get('products', [ProductController::class, 'index'])->name('api.v1.products.index');
@@ -52,6 +54,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/qris', [PaymentController::class, 'activeQris'])->name('customer.qris');
             Route::get('/qris/image', [PaymentController::class, 'activeQrisImage'])->name('customer.qris.image');
         });
+        Route::middleware('role:CUSTOMER')
+            ->get('customer/payments', [PaymentController::class, 'history'])
+            ->name('api.v1.customer.payments.index');
         Route::prefix('owner')->middleware('role:OWNER')->group(function () {
             Route::get('products', [ProductController::class, 'ownerIndex'])->name('api.v1.owner.products.index');
             Route::post('products', [ProductController::class, 'store'])->name('api.v1.owner.products.store');
@@ -66,11 +71,15 @@ Route::prefix('v1')->group(function () {
             Route::put('qris', [OwnerController::class, 'updateQris'])->name('api.v1.owner.qris.update');
             Route::post('payments/{payment}/approve', [OwnerController::class, 'approve'])->name('api.v1.owner.payments.approve');
             Route::post('payments/{payment}/reject', [OwnerController::class, 'reject'])->name('api.v1.owner.payments.reject');
+            Route::post('orders/{order}/payment-verification', [OwnerController::class, 'verifyOrderPayment'])
+                ->name('api.v1.owner.orders.payment-verification');
             Route::get('payments/{payment}/proof', [OwnerController::class, 'proof'])->name('api.v1.owner.payments.proof');
             Route::post('orders/{order}/process', [OwnerController::class, 'process'])->name('api.v1.owner.orders.process');
             Route::post('orders/{order}/assign-courier', [OwnerController::class, 'assign'])->name('api.v1.owner.orders.assign-courier');
         });
         Route::prefix('courier')->middleware('ensure-role:COURIER')->group(function () {
+            Route::post('orders/{order}/payment-confirmation', [CourierController::class, 'confirmOrderPayment'])
+                ->name('api.v1.courier.orders.payment-confirmation');
             Route::get('assignments', [CourierController::class, 'index'])->name('api.v1.courier.assignments.index');
             Route::get('assignments/{assignment}', [CourierController::class, 'show'])->name('api.v1.courier.assignments.show');
             Route::post('assignments/{assignment}/start', [CourierController::class, 'start'])->name('api.v1.courier.assignments.start');

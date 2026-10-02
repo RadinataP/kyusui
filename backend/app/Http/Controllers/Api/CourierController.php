@@ -13,6 +13,7 @@ use App\Models\CourierLocation;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\Notification;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Database\QueryException;
@@ -24,6 +25,17 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class CourierController extends Controller
 {
+    public function confirmOrderPayment(Request $request, Order $order): JsonResponse
+    {
+        $courierId = $this->courierId($request);
+        $assignment = $order->assignments()
+            ->where('courier_id', $courierId)
+            ->where('status', AssignmentStatus::ACTIVE->value)
+            ->firstOrFail();
+
+        return $this->cash($request, $assignment);
+    }
+
     private function courierId(Request $request): int
     {
         $courierId = $request->user()?->courier?->id;
@@ -159,6 +171,15 @@ class CourierController extends Controller
             return $this->serverError($exception, 'start', $assignment);
         }
 
+        $order = Order::query()->with('customer.user')->findOrFail($assignment->order_id);
+        event(new BusinessActionOccurred(
+            userId: $order->customer->user_id,
+            type: 'DELIVERY_STARTED',
+            title: 'Pengantaran Dimulai',
+            body: 'Pesanan Anda sedang diantarkan oleh Courier.',
+            data: ['order_id' => $order->id, 'assignment_id' => $assignment->id],
+        ));
+
         return response()->json([
             'data' => $this->assignmentData($assignment),
             'message' => 'Pengantaran berhasil dimulai.',
@@ -250,6 +271,23 @@ class CourierController extends Controller
             return $this->serverError($exception, 'location', $assignment);
         }
 
+        $order = Order::query()->with('customer.user')->findOrFail($assignment->order_id);
+        $trackingNotificationExists = Notification::query()
+            ->where('user_id', $order->customer->user_id)
+            ->where('type', 'TRACKING_AVAILABLE')
+            ->whereJsonContains('data->assignment_id', $assignment->id)
+            ->exists();
+
+        if (! $trackingNotificationExists) {
+            event(new BusinessActionOccurred(
+                userId: $order->customer->user_id,
+                type: 'TRACKING_AVAILABLE',
+                title: 'Tracking Tersedia',
+                body: 'Lokasi Courier untuk pesanan Anda sudah tersedia.',
+                data: ['order_id' => $order->id, 'assignment_id' => $assignment->id],
+            ));
+        }
+
         return response()->json([
             'data' => $location,
             'message' => 'Lokasi berhasil diperbarui.',
@@ -304,16 +342,6 @@ class CourierController extends Controller
             body: 'Pembayaran tunai pesanan Anda telah dikonfirmasi.',
             data: ['order_id' => $order->id, 'payment_id' => $payment->id],
         ));
-        User::query()
-            ->whereHas('role', fn ($query) => $query->where('name', 'OWNER'))
-            ->pluck('id')
-            ->each(fn (int $ownerUserId) => event(new BusinessActionOccurred(
-                userId: $ownerUserId,
-                type: 'PAYMENT_CASH_CONFIRMED',
-                title: 'Pembayaran Tunai Dikonfirmasi',
-                body: 'Pembayaran tunai telah dikonfirmasi oleh kurir.',
-                data: ['order_id' => $order->id, 'payment_id' => $payment->id],
-            )));
 
         return response()->json([
             'data' => [

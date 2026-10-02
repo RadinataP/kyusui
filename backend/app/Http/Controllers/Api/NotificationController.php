@@ -4,13 +4,64 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\NotificationResource;
+use App\Http\Resources\DeviceTokenResource;
+use App\Models\DeviceToken;
 use App\Models\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    public function registerDeviceToken(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string', 'max:500'],
+            'platform' => ['required', 'string', 'max:20'],
+        ]);
+
+        $deviceToken = DB::transaction(function () use ($request, $validated): DeviceToken {
+            $deviceToken = DeviceToken::query()
+                ->where('token', $validated['token'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($deviceToken === null) {
+                $deviceToken = DeviceToken::create([
+                    'user_id' => $request->user()->id,
+                    'token' => $validated['token'],
+                    'platform' => strtolower($validated['platform']),
+                    'is_active' => true,
+                ]);
+            } else {
+                abort_unless(
+                    $deviceToken->user_id === $request->user()->id || $deviceToken->is_active === false,
+                    409,
+                    'Device token sedang digunakan oleh akun lain.',
+                );
+                $deviceToken->update([
+                    'user_id' => $request->user()->id,
+                    'platform' => strtolower($validated['platform']),
+                    'is_active' => true,
+                ]);
+            }
+
+            Log::info('FCM device token registered.', [
+                'user_id' => $request->user()->id,
+                'device_token_id' => $deviceToken->id,
+                'platform' => $deviceToken->platform,
+            ]);
+
+            return $deviceToken->fresh();
+        });
+
+        return response()->json([
+            'data' => new DeviceTokenResource($deviceToken),
+            'message' => 'Device token berhasil didaftarkan.',
+        ], 200);
+    }
+
     /**
      * Display a listing of the user's notifications.
      */
