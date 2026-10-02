@@ -6,9 +6,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    protected $fillable = ['customer_id', 'status', 'subtotal', 'total', 'delivery_address'];
+    protected $fillable = [
+        'customer_id',
+        'status',
+        'subtotal',
+        'delivery_fee',
+        'total',
+        'delivery_address',
+        'delivery_latitude',
+        'delivery_longitude',
+        'idempotency_key',
+    ];
 
-    protected $casts = ['subtotal' => 'decimal:2', 'total' => 'decimal:2'];
+    protected $casts = [
+        'subtotal' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
+        'total' => 'decimal:2',
+        'delivery_latitude' => 'decimal:7',
+        'delivery_longitude' => 'decimal:7',
+    ];
 
     public function customer()
     {
@@ -33,5 +49,10 @@ class Order extends Model
     public function histories()
     {
         return $this->hasMany(OrderStatusHistory::class);
+    }
+
+    public function statusHistories()
+    {
+        return $this->histories();
     }
 }

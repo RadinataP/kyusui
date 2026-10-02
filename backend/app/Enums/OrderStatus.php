@@ -10,4 +10,5 @@ enum OrderStatus: string
     case DITUGASKAN = 'DITUGASKAN';
     case DALAM_PENGANTARAN = 'DALAM_PENGANTARAN';
     case SELESAI = 'SELESAI';
+    case DIBATALKAN = 'DIBATALKAN';
 }

@@ -77,6 +77,7 @@ class CourierApiTest extends TestCase
             ->assertJson(['message' => 'Lokasi belum dapat diperbarui karena pengantaran belum aktif.']);
 
         $assignment->update(['status' => AssignmentStatus::ACTIVE]);
+        $assignment->order->update(['status' => OrderStatus::DALAM_PENGANTARAN->value]);
         $this->actingAs($user)->postJson('/api/v1/courier/assignments/'.$assignment->id.'/location', $payload)
             ->assertOk()
             ->assertJsonPath('message', 'Lokasi berhasil diperbarui.');
