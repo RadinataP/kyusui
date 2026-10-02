@@ -17,6 +17,15 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:login')
         ->name('api.v1.auth.login');
     Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['auth:sanctum', 'role:CUSTOMER', 'throttle:10,1'])
+            ->get('dashboard/customer', [DashboardController::class, 'customer'])
+            ->name('api.v1.dashboard.customer');
+        Route::middleware(['auth:sanctum', 'role:OWNER', 'throttle:30,1'])
+            ->get('dashboard/owner', [DashboardController::class, 'owner'])
+            ->name('api.v1.dashboard.owner');
+        Route::middleware(['auth:sanctum', 'role:COURIER', 'throttle:20,1'])
+            ->get('dashboard/courier', [DashboardController::class, 'courier'])
+            ->name('api.v1.dashboard.courier');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
         Route::post('auth/logout-all', [AuthController::class, 'logoutAllDevices'])->name('api.v1.auth.logout-all');
         Route::post('auth/refresh-token', [AuthController::class, 'refreshToken'])->name('api.v1.auth.refresh-token');
