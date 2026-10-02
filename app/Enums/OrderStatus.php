@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Enums;
+
+enum OrderStatus: string
+{
+    case MENUNGGU_PEMBAYARAN = 'MENUNGGU_PEMBAYARAN';
+    case MENUNGGU_DIPROSES = 'MENUNGGU_DIPROSES';
+    case DIPROSES = 'DIPROSES';
+    case DITUGASKAN = 'DITUGASKAN';
+    case DALAM_PENGANTARAN = 'DALAM_PENGANTARAN';
+    case SELESAI = 'SELESAI';
+}
