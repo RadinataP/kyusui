@@ -23,11 +23,11 @@ class KyusuiApiTest extends TestCase
 
     public function test_customer_can_register_and_create_order_with_database_price(): void
     {
-        $register = $this->postJson('/api/v1/auth/register', ['name' => 'A', 'email' => 'a@example.com', 'password' => 'password', 'password_confirmation' => 'password']);
+        $register = $this->postJson('/api/v1/auth/register', ['name' => 'A', 'email' => 'a@example.com', 'password' => 'Password1', 'password_confirmation' => 'Password1']);
         $register->assertCreated();
         $token = $register->json('data.user.id') ? User::first()->createToken('test')->plainTextToken : '';
-        $response = $this->withToken($token)->postJson('/api/v1/orders', ['items' => [['product_id' => 1, 'quantity' => 2]], 'delivery_address' => 'Jl. Test', 'payment_method' => 'CASH']);
-        $response->assertOk()->assertJsonPath('data.total', '30000.00');
+        $response = $this->withToken($token)->postJson('/api/v1/orders', ['items' => [['product_id' => 1, 'quantity' => 2]], 'delivery_address' => 'Jl. Test', 'delivery_latitude' => -6.2, 'delivery_longitude' => 106.816666, 'payment_method' => 'CASH']);
+        $response->assertCreated()->assertJsonPath('data.total', '35000.00');
         $response->assertJsonPath('data.status', 'MENUNGGU_DIPROSES');
         $this->assertDatabaseHas('payment_status_histories', ['to_status' => 'PENDING']);
     }

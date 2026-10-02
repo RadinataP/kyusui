@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessSetting;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class PaymentController extends Controller
 {
@@ -93,7 +95,9 @@ class PaymentController extends Controller
         abort_unless($payment->status === PaymentStatus::PENDING->value, 409, 'Bukti pembayaran tidak dapat diunggah pada status saat ini.');
 
         try {
-            $payment = DB::transaction(function () use ($request, $order, $payment, $proofFile, $validated): Payment {
+            $storedProofPath = null;
+            $previousProofPath = $payment->proof_path;
+            $payment = DB::transaction(function () use ($request, $order, $payment, $proofFile, $validated, &$storedProofPath): Payment {
                 $lockedPayment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
                 abort_if(
                     $lockedPayment->proof_path !== null && $lockedPayment->status === PaymentStatus::WAITING_VERIFICATION->value,
@@ -102,10 +106,8 @@ class PaymentController extends Controller
                 );
                 abort_unless($lockedPayment->status === PaymentStatus::PENDING->value, 409, 'Status pembayaran telah berubah.');
 
-                if ($lockedPayment->proof_path !== null) {
-                    Storage::disk('local')->delete($lockedPayment->proof_path);
-                }
                 $proofPath = $proofFile->store('payment-proofs/order-'.$order->id, 'local');
+                $storedProofPath = $proofPath;
                 $proofChecksum = md5_file($proofFile->getRealPath());
                 abort_unless($proofChecksum !== false, 422, 'Bukti pembayaran tidak dapat diproses.');
                 $lockedPayment->update([
@@ -121,7 +123,18 @@ class PaymentController extends Controller
 
                 return $lockedPayment->fresh();
             });
+            if ($previousProofPath !== null && $previousProofPath !== $storedProofPath) {
+                Storage::disk('local')->delete($previousProofPath);
+            }
+        } catch (HttpExceptionInterface $exception) {
+            if ($storedProofPath !== null) {
+                Storage::disk('local')->delete($storedProofPath);
+            }
+            throw $exception;
         } catch (QueryException $exception) {
+            if ($storedProofPath !== null) {
+                Storage::disk('local')->delete($storedProofPath);
+            }
             Log::error('Database error while uploading QRIS proof.', ['order_id' => $order->id, 'exception' => $exception]);
 
             return response()->json([
@@ -130,13 +143,17 @@ class PaymentController extends Controller
             ], 500);
         }
 
-        event(new BusinessActionOccurred(
-            userId: $request->user()->id,
-            type: 'PAYMENT_QRIS_PROOF_UPLOADED',
-            title: 'Bukti Pembayaran Diunggah',
-            body: 'Bukti pembayaran Anda sedang menunggu verifikasi.',
-            data: ['order_id' => $order->id, 'payment_id' => $payment->id],
-        ));
+        $notificationData = ['order_id' => $order->id, 'payment_id' => $payment->id];
+        User::query()
+            ->whereHas('role', fn ($query) => $query->where('name', 'OWNER'))
+            ->pluck('id')
+            ->each(fn (int $ownerUserId) => event(new BusinessActionOccurred(
+                userId: $ownerUserId,
+                type: 'PAYMENT_QRIS_PROOF_UPLOADED',
+                title: 'Bukti Pembayaran Baru',
+                body: 'Bukti pembayaran QRIS baru menunggu verifikasi.',
+                data: $notificationData,
+            )));
         Log::info('QRIS proof uploaded.', [
             'order_id' => $order->id,
             'payment_id' => $payment->id,
@@ -147,80 +164,6 @@ class PaymentController extends Controller
         return response()->json([
             'data' => $payment,
             'message' => 'Bukti pembayaran berhasil diunggah.',
-        ], 200);
-    }
-
-    public function verify(Request $request, Order $order): JsonResponse
-    {
-        abort_unless($request->user()->role?->name === 'OWNER', 403, 'Akses hanya untuk owner.');
-        $validated = $request->validate(['action' => ['required', 'string', 'in:approve,reject']]);
-        $proofPath = null;
-
-        try {
-            [$payment, $customerUserId] = DB::transaction(function () use ($request, $order, $validated, &$proofPath): array {
-                $lockedOrder = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
-                $payment = Payment::query()->where('order_id', $lockedOrder->id)->lockForUpdate()->firstOrFail();
-                abort_unless($payment->method === PaymentMethod::QRIS->value, 409, 'Verifikasi ini hanya berlaku untuk QRIS.');
-                abort_unless($payment->status === PaymentStatus::WAITING_VERIFICATION->value, 409, 'Pembayaran tidak sedang menunggu verifikasi.');
-                abort_unless($payment->proof_path !== null, 409, 'Bukti pembayaran tidak ditemukan.');
-                $proofPath = $payment->proof_path;
-
-                if ($validated['action'] === 'approve') {
-                    abort_unless($lockedOrder->status === OrderStatus::MENUNGGU_PEMBAYARAN->value, 409, 'Order tidak dapat disetujui pada status saat ini.');
-                    $payment->transitionTo(PaymentStatus::PAID, $request->user()->id);
-                    $lockedOrder->update(['status' => OrderStatus::MENUNGGU_DIPROSES->value]);
-                    $lockedOrder->statusHistories()->create([
-                        'from_status' => OrderStatus::MENUNGGU_PEMBAYARAN->value,
-                        'to_status' => OrderStatus::MENUNGGU_DIPROSES->value,
-                        'changed_by' => $request->user()->id,
-                    ]);
-                } else {
-                    $payment->transitionTo(PaymentStatus::PENDING, $request->user()->id);
-                    $payment->update([
-                        'proof_path' => null,
-                        'idempotency_key' => null,
-                        'proof_size' => null,
-                        'proof_mime_type' => null,
-                        'proof_checksum' => null,
-                    ]);
-                }
-
-                return [$payment->fresh(), $lockedOrder->customer()->with('user')->firstOrFail()->user_id];
-            });
-        } catch (QueryException $exception) {
-            Log::error('Database error while verifying QRIS payment.', ['order_id' => $order->id, 'exception' => $exception]);
-
-            return response()->json([
-                'data' => null,
-                'message' => 'Gagal memverifikasi pembayaran. Silakan coba lagi.',
-            ], 500);
-        }
-
-        if ($validated['action'] === 'reject' && $proofPath !== null) {
-            Storage::disk('local')->delete($proofPath);
-        }
-        $eventType = $validated['action'] === 'approve' ? 'PAYMENT_QRIS_APPROVED' : 'PAYMENT_QRIS_REJECTED';
-        event(new BusinessActionOccurred(
-            userId: $customerUserId,
-            type: $eventType,
-            title: $validated['action'] === 'approve' ? 'Pembayaran QRIS Disetujui' : 'Pembayaran QRIS Ditolak',
-            body: $validated['action'] === 'approve'
-                ? 'Pembayaran QRIS Anda telah disetujui.'
-                : 'Bukti QRIS Anda ditolak. Silakan unggah bukti baru.',
-            data: ['order_id' => $order->id, 'payment_id' => $payment->id],
-        ));
-        Log::info('QRIS payment verified.', [
-            'order_id' => $order->id,
-            'payment_id' => $payment->id,
-            'action' => $validated['action'],
-            'user_id' => $request->user()->id,
-        ]);
-
-        return response()->json([
-            'data' => $payment,
-            'message' => $validated['action'] === 'approve'
-                ? 'Pembayaran QRIS berhasil disetujui.'
-                : 'Pembayaran QRIS berhasil ditolak.',
         ], 200);
     }
 

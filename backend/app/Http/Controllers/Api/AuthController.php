@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -103,9 +102,9 @@ class AuthController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
-            ]);
+            return response()->json([
+                'message' => 'Email atau password salah.',
+            ], 401);
         }
 
         $abilities = match ($user->role->name) {

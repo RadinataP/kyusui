@@ -2,28 +2,53 @@
 
 namespace App\Services;
 
-use App\Models\Order;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
-    public function notifyDeliveryStarted(Order $order): void
+    public function sendToUser(
+        int $userId,
+        string $type,
+        string $title,
+        string $body,
+        array $data = [],
+    ): Notification
     {
-        $this->logDeliveryEvent('Delivery started notification queued.', $order);
+        $notification = Notification::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'title' => $title,
+            'body' => $body,
+            'data' => $data,
+        ]);
+
+        Log::info('Notification created.', [
+            'notification_id' => $notification->id,
+            'user_id' => $userId,
+            'type' => $type,
+        ]);
+
+        return $notification;
     }
 
-    public function notifyTrackingAvailable(Order $order): void
+    public function sendToRole(
+        string $role,
+        string $type,
+        string $title,
+        string $body,
+        array $data = [],
+    ): int
     {
-        $this->logDeliveryEvent('Tracking available notification queued.', $order);
-    }
+        $userIds = User::query()
+            ->whereHas('role', fn ($query) => $query->where('name', $role))
+            ->pluck('id');
 
-    public function notifyOrderCompleted(Order $order): void
-    {
-        $this->logDeliveryEvent('Order completed notification queued.', $order);
-    }
+        foreach ($userIds as $userId) {
+            $this->sendToUser((int) $userId, $type, $title, $body, $data);
+        }
 
-    private function logDeliveryEvent(string $message, Order $order): void
-    {
-        Log::info($message, ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
+        return $userIds->count();
     }
 }

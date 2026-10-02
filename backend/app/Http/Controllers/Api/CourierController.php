@@ -6,12 +6,13 @@ use App\Enums\AssignmentStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Events\BusinessActionOccurred;
 use App\Http\Controllers\Controller;
 use App\Models\CourierAssignment;
 use App\Models\CourierLocation;
 use App\Models\Order;
 use App\Models\Payment;
-use App\Services\NotificationService;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Database\QueryException;
@@ -23,8 +24,6 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class CourierController extends Controller
 {
-    public function __construct(private readonly NotificationService $notificationService) {}
-
     private function courierId(Request $request): int
     {
         $courierId = $request->user()?->courier?->id;
@@ -159,8 +158,6 @@ class CourierController extends Controller
         } catch (Exception $exception) {
             return $this->serverError($exception, 'start', $assignment);
         }
-
-        $this->notificationService->notifyDeliveryStarted($assignment->order()->firstOrFail());
 
         return response()->json([
             'data' => $this->assignmentData($assignment),
@@ -297,11 +294,32 @@ class CourierController extends Controller
             return $this->serverError($exception, 'cash', $assignment);
         }
 
+        $order = Order::query()
+            ->with('customer.user')
+            ->findOrFail($assignment->order_id);
+        event(new BusinessActionOccurred(
+            userId: $order->customer->user_id,
+            type: 'PAYMENT_CASH_CONFIRMED',
+            title: 'Pembayaran Tunai Dikonfirmasi',
+            body: 'Pembayaran tunai pesanan Anda telah dikonfirmasi.',
+            data: ['order_id' => $order->id, 'payment_id' => $payment->id],
+        ));
+        User::query()
+            ->whereHas('role', fn ($query) => $query->where('name', 'OWNER'))
+            ->pluck('id')
+            ->each(fn (int $ownerUserId) => event(new BusinessActionOccurred(
+                userId: $ownerUserId,
+                type: 'PAYMENT_CASH_CONFIRMED',
+                title: 'Pembayaran Tunai Dikonfirmasi',
+                body: 'Pembayaran tunai telah dikonfirmasi oleh kurir.',
+                data: ['order_id' => $order->id, 'payment_id' => $payment->id],
+            )));
+
         return response()->json([
             'data' => [
                 'id' => $payment->id,
-                'method' => $payment->method,
-                'status' => $payment->status,
+                'payment_method' => $payment->method,
+                'payment_status' => $payment->status,
                 'verified_at' => $payment->verified_at,
             ],
             'message' => 'Pembayaran tunai berhasil dikonfirmasi.',
@@ -358,7 +376,22 @@ class CourierController extends Controller
             return $this->serverError($exception, 'complete', $assignment);
         }
 
-        $this->notificationService->notifyOrderCompleted($assignment->order()->firstOrFail());
+        $completedOrder = Order::query()->with(['customer.user', 'assignments.courier.user'])->findOrFail($assignment->order_id);
+        $notificationData = ['order_id' => $completedOrder->id, 'assignment_id' => $assignment->id];
+        $recipientUserIds = collect([$completedOrder->customer->user_id, $request->user()->id])
+            ->merge(
+                User::query()
+                    ->whereHas('role', fn ($query) => $query->where('name', 'OWNER'))
+                    ->pluck('id')
+            )
+            ->unique();
+        $recipientUserIds->each(fn (int $recipientUserId) => event(new BusinessActionOccurred(
+            userId: $recipientUserId,
+            type: 'ORDER_COMPLETED',
+            title: 'Pesanan Selesai',
+            body: 'Pesanan telah selesai diantarkan.',
+            data: $notificationData,
+        )));
 
         return response()->json([
             'data' => $this->assignmentData($assignment),

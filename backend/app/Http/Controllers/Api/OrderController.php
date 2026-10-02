@@ -8,14 +8,15 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Events\BusinessActionOccurred;
 use App\Http\Controllers\Controller;
+use App\Models\BusinessSetting;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
@@ -57,11 +58,23 @@ class OrderController extends Controller
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
             'delivery_address' => ['required', 'string', 'max:500'],
-            'delivery_latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:delivery_longitude'],
-            'delivery_longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:delivery_latitude'],
+            'delivery_latitude' => ['required', 'numeric', 'between:-90,90'],
+            'delivery_longitude' => ['required', 'numeric', 'between:-180,180'],
             'idempotency_key' => ['nullable', 'string', 'max:64'],
             'payment_method' => ['required', 'string', 'in:'.PaymentMethod::QRIS->value.','.PaymentMethod::CASH->value],
         ]);
+
+        if ($validated['payment_method'] === PaymentMethod::QRIS->value) {
+            $qrisImagePath = BusinessSetting::query()
+                ->where('key', 'qris_image_path')
+                ->value('value');
+
+            abort_unless(
+                is_string($qrisImagePath) && trim($qrisImagePath) !== '',
+                409,
+                'Pembayaran QRIS belum tersedia.',
+            );
+        }
 
         try {
             [$order, $created] = DB::transaction(function () use ($validated, $customer, $request): array {
@@ -77,22 +90,22 @@ class OrderController extends Controller
                     }
                 }
 
-                $deliveryLatitude = (float) ($validated['delivery_latitude'] ?? -6.2);
-                $deliveryLongitude = (float) ($validated['delivery_longitude'] ?? 106.816666);
+                $deliveryLatitude = (float) $validated['delivery_latitude'];
+                $deliveryLongitude = (float) $validated['delivery_longitude'];
                 $products = Product::query()
                     ->whereIn('id', array_column($validated['items'], 'product_id'))
                     ->orderBy('id')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
-                $subtotal = 0.0;
+                $subtotal = '0.00';
                 $orderItems = [];
 
                 foreach ($validated['items'] as $item) {
                     $product = $products->get($item['product_id']);
                     abort_unless($product !== null && $product->availability, 422, 'Produk tidak tersedia.');
-                    $lineTotal = (float) $product->price * $item['quantity'];
-                    $subtotal += $lineTotal;
+                    $lineTotal = bcmul((string) $product->price, (string) $item['quantity'], 2);
+                    $subtotal = bcadd($subtotal, $lineTotal, 2);
                     $orderItems[] = [
                         'product_id' => $product->id,
                         'quantity' => $item['quantity'],
@@ -102,7 +115,7 @@ class OrderController extends Controller
                 }
 
                 $deliveryFee = $this->calculateDeliveryFee($deliveryLatitude, $deliveryLongitude);
-                $total = $subtotal + $deliveryFee;
+                $total = bcadd($subtotal, number_format($deliveryFee, 2, '.', ''), 2);
                 $initialStatus = $validated['payment_method'] === PaymentMethod::CASH->value
                     ? OrderStatus::MENUNGGU_DIPROSES
                     : OrderStatus::MENUNGGU_PEMBAYARAN;
@@ -133,13 +146,24 @@ class OrderController extends Controller
                     'to_status' => PaymentStatus::PENDING->value,
                     'changed_by' => $request->user()->id,
                 ]);
+                $notificationData = ['order_id' => $order->id];
                 event(new BusinessActionOccurred(
                     userId: $request->user()->id,
                     type: 'ORDER_CREATED',
                     title: 'Order Dibuat',
-                    body: 'Pesanan baru Anda telah berhasil dibuat.',
-                    data: ['order_id' => $order->id],
+                    body: 'Pesanan Anda telah berhasil dibuat.',
+                    data: $notificationData,
                 ));
+                User::query()
+                    ->whereHas('role', fn ($query) => $query->where('name', 'OWNER'))
+                    ->pluck('id')
+                    ->each(fn (int $ownerUserId) => event(new BusinessActionOccurred(
+                        userId: $ownerUserId,
+                        type: 'ORDER_CREATED',
+                        title: 'Order Baru',
+                        body: 'Pesanan baru menunggu diproses.',
+                        data: $notificationData,
+                    )));
                 Log::info('Order created', [
                     'order_id' => $order->id,
                     'customer_id' => $customer->id,
@@ -224,46 +248,6 @@ class OrderController extends Controller
         return response()->json([
             'data' => $order->payment,
             'message' => 'Metode pembayaran berhasil diperbarui.',
-        ], 200);
-    }
-
-    public function uploadQrisProof(Request $request, Order $order): JsonResponse
-    {
-        $customer = $request->user()->customer;
-        abort_unless($customer !== null && $order->customer_id === $customer->id, 403, 'Anda tidak memiliki akses ke pesanan ini.');
-        $payment = $order->payment;
-        abort_if($payment === null, 409, 'Pembayaran untuk pesanan ini tidak ditemukan.');
-        abort_unless(
-            $payment->method === PaymentMethod::QRIS->value
-            && $payment->status === PaymentStatus::PENDING->value,
-            409,
-            'Bukti QRIS tidak dapat diunggah pada status saat ini.',
-        );
-        $validated = $request->validate([
-            'proof_image' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
-        ]);
-        $oldProofPath = $payment->proof_path;
-        $proofPath = DB::transaction(function () use ($validated, $payment, $request, $order): string {
-            $proofPath = $validated['proof_image']->store('qris-proofs/'.$order->id, 'local');
-            $payment->update(['proof_path' => $proofPath]);
-            $payment->transitionTo(PaymentStatus::WAITING_VERIFICATION, $request->user()->id);
-
-            return $proofPath;
-        });
-        if ($oldProofPath !== null && $oldProofPath !== $proofPath) {
-            Storage::disk('local')->delete($oldProofPath);
-        }
-        event(new BusinessActionOccurred(
-            userId: $request->user()->id,
-            type: 'PAYMENT_QRIS_PROOF_UPLOADED',
-            title: 'Bukti QRIS Diunggah',
-            body: 'Bukti pembayaran QRIS Anda sedang menunggu verifikasi.',
-            data: ['order_id' => $order->id, 'payment_id' => $payment->id],
-        ));
-
-        return response()->json([
-            'data' => $payment->fresh(),
-            'message' => 'Bukti pembayaran QRIS berhasil diunggah.',
         ], 200);
     }
 

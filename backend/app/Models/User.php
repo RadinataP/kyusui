@@ -52,6 +52,11 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function deviceTokens()
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

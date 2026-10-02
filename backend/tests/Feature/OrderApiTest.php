@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\BusinessSetting;
 use App\Models\Product;
 use App\Models\Role;
 use App\Models\User;
@@ -28,6 +29,7 @@ class OrderApiTest extends TestCase
             'price' => 15000,
             'availability' => true,
         ]);
+        BusinessSetting::create(['key' => 'qris_image_path', 'value' => 'qris/active.png']);
     }
 
     public function test_order_creation_is_idempotent_and_syncs_delivery_fee_and_payment_amount(): void
@@ -58,6 +60,8 @@ class OrderApiTest extends TestCase
         $order = $this->actingAs($user)->postJson('/api/v1/orders', [
             'items' => [['product_id' => 1, 'quantity' => 1]],
             'delivery_address' => 'Jl. Depot',
+            'delivery_latitude' => -6.2,
+            'delivery_longitude' => 106.816666,
             'payment_method' => 'QRIS',
         ])->json('data');
 

@@ -29,8 +29,8 @@ class AuthApiTest extends TestCase
         $response = $this->postJson('/api/v1/auth/register', [
             'name' => 'Customer Baru',
             'email' => 'customer@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Password1',
+            'password_confirmation' => 'Password1',
             'role' => 'OWNER',
         ]);
 
@@ -40,18 +40,21 @@ class AuthApiTest extends TestCase
             ->assertJsonMissingPath('data.user.password');
         $this->assertDatabaseHas('customers', ['user_id' => $response->json('data.user.id')]);
         $this->assertDatabaseMissing('owners', ['user_id' => $response->json('data.user.id')]);
-        $this->assertTrue(Hash::check('password', User::firstOrFail()->password));
+        $this->assertTrue(Hash::check('Password1', User::firstOrFail()->password));
     }
 
     public function test_registration_validation_rejects_duplicate_email_and_mismatched_password(): void
     {
-        User::factory()->create(['email' => 'duplicate@example.com']);
+        User::factory()->create([
+            'email' => 'duplicate@example.com',
+            'role_id' => Role::where('name', 'CUSTOMER')->value('id'),
+        ]);
 
         $this->postJson('/api/v1/auth/register', [
             'name' => 'Customer',
             'email' => 'duplicate@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'different',
+            'password' => 'Password1',
+            'password_confirmation' => 'Different1',
         ])->assertUnprocessable()->assertJsonStructure(['message', 'errors']);
     }
 
@@ -85,7 +88,7 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('data.user.role.name', 'OWNER');
 
         $this->withToken($login->json('data.token'))
-            ->getJson('/api/v1/owner/dashboard')
+            ->getJson('/api/v1/dashboard/owner')
             ->assertOk()
             ->assertJsonPath('message', 'Data dashboard owner berhasil diambil.');
 

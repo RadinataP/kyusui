@@ -26,6 +26,9 @@ class PaymentApiTest extends TestCase
             Role::create(['name' => $name]);
         }
         Product::create(['name' => 'Galon', 'price' => 15000, 'availability' => true]);
+        Storage::fake('local');
+        Storage::disk('local')->put('qris/active.png', 'image-content');
+        BusinessSetting::create(['key' => 'qris_image_path', 'value' => 'qris/active.png']);
     }
 
     public function test_customer_uploads_qris_proof_with_metadata_and_idempotency(): void
@@ -38,8 +41,8 @@ class PaymentApiTest extends TestCase
             'proof' => UploadedFile::fake()->image('proof.png', 200, 200),
         ];
 
-        $first = $this->actingAs($customerUser)->post('/api/v1/payment/orders/'.$order->id.'/proof', $payload);
-        $second = $this->actingAs($customerUser)->postJson('/api/v1/payment/orders/'.$order->id.'/proof', [
+        $first = $this->actingAs($customerUser)->post('/api/v1/orders/'.$order->id.'/qris-proof', $payload);
+        $second = $this->actingAs($customerUser)->postJson('/api/v1/orders/'.$order->id.'/qris-proof', [
             'idempotency_key' => 'payment-proof-key',
         ]);
 
@@ -58,12 +61,12 @@ class PaymentApiTest extends TestCase
         [$customerUser, $customer] = $this->customer();
         [$ownerUser] = $this->owner();
         $order = $this->order($customer, 'QRIS');
-        $this->actingAs($customerUser)->post('/api/v1/payment/orders/'.$order->id.'/proof', [
+        $this->actingAs($customerUser)->post('/api/v1/orders/'.$order->id.'/qris-proof', [
             'idempotency_key' => 'verify-key',
             'proof' => UploadedFile::fake()->image('proof.png', 200, 200),
         ])->assertOk();
 
-        $this->actingAs($ownerUser)->postJson('/api/v1/owner/payment/orders/'.$order->id.'/verify', ['action' => 'approve'])
+        $this->actingAs($ownerUser)->postJson('/api/v1/owner/payments/'.$order->payment->id.'/approve')
             ->assertOk()
             ->assertJsonPath('data.status', 'PAID');
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'MENUNGGU_DIPROSES']);
@@ -73,7 +76,6 @@ class PaymentApiTest extends TestCase
     {
         Storage::fake('local');
         Storage::disk('local')->put('qris/active.png', 'image-content');
-        BusinessSetting::create(['key' => 'qris_image_path', 'value' => 'qris/active.png']);
         [$customerUser] = $this->customer();
 
         $this->actingAs($customerUser)->getJson('/api/v1/payment/qris')

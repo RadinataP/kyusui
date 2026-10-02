@@ -29,7 +29,7 @@ class DomainApiTest extends TestCase
         Customer::create(['user_id' => $user->id, 'phone' => '0800000000']);
         Notification::create(['user_id' => $user->id, 'type' => 'TEST', 'title' => 'Info', 'body' => 'Pesan']);
 
-        $this->actingAs($user)->getJson('/api/v1/customer/dashboard')
+        $this->actingAs($user)->getJson('/api/v1/dashboard/customer')
             ->assertOk()
             ->assertJsonPath('message', 'Data dashboard customer berhasil diambil.')
             ->assertJsonPath('data.unread_notifications', 1);
@@ -68,7 +68,7 @@ class DomainApiTest extends TestCase
         $this->actingAs($user)->getJson('/api/v1/notifications')->assertOk()->assertJsonCount(1, 'data');
         $this->actingAs($user)->postJson('/api/v1/notifications/'.$notification->id.'/read')
             ->assertOk()
-            ->assertJsonPath('message', 'Notifikasi berhasil dibaca.');
+            ->assertJsonPath('message', 'Notifikasi berhasil ditandai sebagai dibaca.');
         $this->assertNotNull($notification->fresh()->read_at);
     }
 

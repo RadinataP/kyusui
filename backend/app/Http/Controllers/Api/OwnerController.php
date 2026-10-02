@@ -184,6 +184,12 @@ class OwnerController extends Controller
                 409,
                 'Status pesanan tidak valid untuk verifikasi pembayaran.',
             );
+            abort_unless(
+                $payment->proof_path !== null
+                    && Storage::disk('local')->exists($payment->proof_path),
+                409,
+                'File bukti pembayaran tidak ditemukan di server.',
+            );
             $payment->transitionTo(PaymentStatus::PAID, $request->user()->id);
             $order->update(['status' => OrderStatus::MENUNGGU_DIPROSES->value]);
             $order->statusHistories()->create([
@@ -372,6 +378,13 @@ class OwnerController extends Controller
                 'COURIER_ASSIGNED',
                 'Tugas Pengantaran Baru',
                 'Anda mendapat tugas pengantaran baru.',
+                ['order_id' => $lockedOrder->id, 'assignment_id' => $assignment->id],
+            ));
+            event(new BusinessActionOccurred(
+                $lockedOrder->customer->user_id,
+                'COURIER_ASSIGNED',
+                'Kurir Ditugaskan',
+                'Kurir telah ditugaskan untuk mengantarkan pesanan Anda.',
                 ['order_id' => $lockedOrder->id, 'assignment_id' => $assignment->id],
             ));
 

@@ -16,7 +16,7 @@ class DashboardAssignmentResource extends JsonResource
             'courier_name' => $this->courier?->user?->name,
             'order' => $this->whenLoaded('order', fn (): ?array => $this->order ? [
                 'id' => $this->order->id,
-                'total' => $this->order->total,
+                'total_amount' => $this->order->total,
                 'customer_name' => $this->order->customer?->user?->name,
                 'delivery_address' => $this->order->delivery_address,
             ] : null),

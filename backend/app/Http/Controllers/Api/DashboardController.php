@@ -49,7 +49,7 @@ class DashboardController extends Controller
                 ->select('products.id', 'products.name')
                 ->selectRaw('COUNT(order_items.id) as order_count')
                 ->groupBy('products.id', 'products.name')
-                ->orderByDesc('quantity')
+                ->orderByDesc('order_count')
                 ->first();
             $activeOrders = (clone $ordersQuery)
                 ->whereIn('status', $activeStatuses)

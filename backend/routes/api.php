@@ -17,13 +17,13 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:login')
         ->name('api.v1.auth.login');
     Route::middleware('auth:sanctum')->group(function () {
-        Route::middleware(['auth:sanctum', 'role:CUSTOMER', 'throttle:10,1'])
+        Route::middleware(['role:CUSTOMER', 'throttle:10,1'])
             ->get('dashboard/customer', [DashboardController::class, 'customer'])
             ->name('api.v1.dashboard.customer');
-        Route::middleware(['auth:sanctum', 'role:OWNER', 'throttle:30,1'])
+        Route::middleware(['role:OWNER', 'throttle:30,1'])
             ->get('dashboard/owner', [DashboardController::class, 'owner'])
             ->name('api.v1.dashboard.owner');
-        Route::middleware(['auth:sanctum', 'role:COURIER', 'throttle:20,1'])
+        Route::middleware(['role:COURIER', 'throttle:20,1'])
             ->get('dashboard/courier', [DashboardController::class, 'courier'])
             ->name('api.v1.dashboard.courier');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
@@ -38,9 +38,6 @@ Route::prefix('v1')->group(function () {
         Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('api.v1.notifications.read');
         Route::get('products', [ProductController::class, 'index'])->name('api.v1.products.index');
         Route::get('products/{product}', [ProductController::class, 'show'])->name('api.v1.products.show');
-        Route::middleware('role:CUSTOMER')
-            ->get('customer/dashboard', [DashboardController::class, 'customer'])
-            ->name('api.v1.customer.dashboard');
         Route::middleware(['role:CUSTOMER', 'throttle:5,1'])->prefix('orders')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('api.v1.orders.index');
             Route::post('/', [OrderController::class, 'store'])->name('api.v1.orders.store');
@@ -54,15 +51,8 @@ Route::prefix('v1')->group(function () {
         Route::middleware(['role:CUSTOMER'])->prefix('payment')->group(function () {
             Route::get('/qris', [PaymentController::class, 'activeQris'])->name('customer.qris');
             Route::get('/qris/image', [PaymentController::class, 'activeQrisImage'])->name('customer.qris.image');
-            Route::post('/orders/{order}/proof', [PaymentController::class, 'proof'])
-                ->middleware('throttle:3,5')
-                ->name('customer.payment.proof');
-        });
-        Route::middleware(['role:OWNER'])->prefix('owner/payment')->group(function () {
-            Route::post('/orders/{order}/verify', [PaymentController::class, 'verify'])->name('owner.payment.verify');
         });
         Route::prefix('owner')->middleware('role:OWNER')->group(function () {
-            Route::get('dashboard', [DashboardController::class, 'owner'])->name('api.v1.owner.dashboard');
             Route::get('products', [ProductController::class, 'ownerIndex'])->name('api.v1.owner.products.index');
             Route::post('products', [ProductController::class, 'store'])->name('api.v1.owner.products.store');
             Route::put('products/{product}', [ProductController::class, 'update'])->name('api.v1.owner.products.update');
@@ -81,7 +71,6 @@ Route::prefix('v1')->group(function () {
             Route::post('orders/{order}/assign-courier', [OwnerController::class, 'assign'])->name('api.v1.owner.orders.assign-courier');
         });
         Route::prefix('courier')->middleware('ensure-role:COURIER')->group(function () {
-            Route::get('dashboard', [DashboardController::class, 'courier'])->name('api.v1.courier.dashboard');
             Route::get('assignments', [CourierController::class, 'index'])->name('api.v1.courier.assignments.index');
             Route::get('assignments/{assignment}', [CourierController::class, 'show'])->name('api.v1.courier.assignments.show');
             Route::post('assignments/{assignment}/start', [CourierController::class, 'start'])->name('api.v1.courier.assignments.start');
