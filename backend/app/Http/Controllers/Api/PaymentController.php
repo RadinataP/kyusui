@@ -23,8 +23,11 @@ class PaymentController extends Controller
 {
     public function activeQris(Request $request): JsonResponse
     {
-        $customer = $request->user()->customer;
-        abort_unless($customer !== null, 403, 'Akses ditolak. Profil customer tidak ditemukan.');
+        abort_unless(
+            in_array($request->user()->role?->name, ['CUSTOMER', 'OWNER'], true),
+            403,
+            'Anda tidak memiliki akses ke QRIS aktif.',
+        );
         abort_unless(BusinessSetting::query()->where('key', 'qris_image_path')->exists(), 404, 'QRIS aktif belum tersedia.');
 
         return response()->json([
@@ -35,8 +38,11 @@ class PaymentController extends Controller
 
     public function activeQrisImage(Request $request): BinaryFileResponse|JsonResponse|Response
     {
-        $customer = $request->user()->customer;
-        abort_unless($customer !== null, 403, 'Akses ditolak. Profil customer tidak ditemukan.');
+        abort_unless(
+            in_array($request->user()->role?->name, ['CUSTOMER', 'OWNER'], true),
+            403,
+            'Anda tidak memiliki akses ke QRIS aktif.',
+        );
         $path = BusinessSetting::query()->where('key', 'qris_image_path')->value('value');
         abort_unless($path && Storage::disk('local')->exists($path), 404, 'QRIS aktif belum tersedia.');
 

@@ -34,6 +34,7 @@ Route::prefix('v1')->group(function () {
         Route::get('profile', [ProfileController::class, 'show'])->name('api.v1.profile.show');
         Route::put('profile', [ProfileController::class, 'update'])->name('api.v1.profile.update');
         Route::get('notifications', [NotificationController::class, 'index'])->name('api.v1.notifications.index');
+        Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('api.v1.notifications.read-all');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('api.v1.notifications.read');
         Route::get('products', [ProductController::class, 'index'])->name('api.v1.products.index');
         Route::get('products/{product}', [ProductController::class, 'show'])->name('api.v1.products.show');
@@ -71,6 +72,7 @@ Route::prefix('v1')->group(function () {
             Route::get('couriers', [OwnerController::class, 'couriers'])->name('api.v1.owner.couriers.index');
             Route::get('payments/qris/pending', [OwnerController::class, 'pending'])->name('api.v1.owner.payments.qris.pending');
             Route::get('qris', [OwnerController::class, 'qris'])->name('api.v1.owner.qris.show');
+            Route::get('qris/image', [PaymentController::class, 'activeQrisImage'])->name('owner.qris.image');
             Route::put('qris', [OwnerController::class, 'updateQris'])->name('api.v1.owner.qris.update');
             Route::post('payments/{payment}/approve', [OwnerController::class, 'approve'])->name('api.v1.owner.payments.approve');
             Route::post('payments/{payment}/reject', [OwnerController::class, 'reject'])->name('api.v1.owner.payments.reject');
