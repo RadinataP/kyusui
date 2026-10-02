@@ -17,4 +17,9 @@ class Courier extends Model
     {
         return $this->hasMany(CourierAssignment::class);
     }
+
+    public function locations()
+    {
+        return $this->hasMany(CourierLocation::class);
+    }
 }
