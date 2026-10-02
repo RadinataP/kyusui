@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.core.MoneyTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="0.101">
+  <properties/>
+  <testcase name="zero is shown as rupiah zero" classname="com.kyusui.app.core.MoneyTest" time="0.037"/>
+  <testcase name="rounding uses half up so display never drops a real amount" classname="com.kyusui.app.core.MoneyTest" time="0.0"/>
+  <testcase name="preview subtotal multiplies backend prices by quantity" classname="com.kyusui.app.core.MoneyTest" time="0.058"/>
+  <testcase name="empty cart has no preview subtotal" classname="com.kyusui.app.core.MoneyTest" time="0.002"/>
+  <testcase name="preview subtotal returns null when any price is unusable" classname="com.kyusui.app.core.MoneyTest" time="0.002"/>
+  <testcase name="decimal string is formatted as rupiah without decimals" classname="com.kyusui.app.core.MoneyTest" time="0.001"/>
+  <testcase name="missing or malformed values never crash the screen" classname="com.kyusui.app.core.MoneyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

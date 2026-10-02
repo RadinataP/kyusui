@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.data.api.CustomerApiContractTest" tests="27" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:18" hostname="ADINATA" time="0.329">
+  <properties/>
+  <testcase name="missing meta falls back to safe defaults instead of crashing" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.067"/>
+  <testcase name="create order request sends only product id quantity and delivery location" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.052"/>
+  <testcase name="update profile request uses the allowed field names" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.003"/>
+  <testcase name="order without payment decodes with a null payment" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.013"/>
+  <testcase name="paid payment no longer requires payment" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.006"/>
+  <testcase name="paginated orders decode the same envelope shape" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.014"/>
+  <testcase name="unavailable product is not made purchasable on the client" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.013"/>
+  <testcase name="select method request never sends a payment status" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.002"/>
+  <testcase name="non positive per page from backend does not loop pagination forever" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.001"/>
+  <testcase name="domain result rejects non positive per page" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.001"/>
+  <testcase name="payment proof resource only exposes availability and never a url" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.015"/>
+  <testcase name="last page reports no more results" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.006"/>
+  <testcase name="payment envelope decodes the payment resource" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.011"/>
+  <testcase name="payment resource carries no legacy gateway or transaction fields" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.004"/>
+  <testcase name="status values retired by the specification are not accepted" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.001"/>
+  <testcase name="order resource decodes items totals status and payment" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.044"/>
+  <testcase name="paginated products decode data and meta" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.019"/>
+  <testcase name="retired payment status values are not accepted" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.004"/>
+  <testcase name="active qris decodes the private image reference" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.008"/>
+  <testcase name="select method request encodes cash" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.0"/>
+  <testcase name="customer profile decodes the flat profile resource" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.007"/>
+  <testcase name="active qris without an image is not displayable" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.001"/>
+  <testcase name="server totals are taken verbatim and never recomputed" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.0"/>
+  <testcase name="unknown status values are preserved as null instead of a guessed status" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.0"/>
+  <testcase name="empty data with meta total zero is still decoded" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.005"/>
+  <testcase name="product resource decodes the canonical fields" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.001"/>
+  <testcase name="payment amount is taken verbatim from the backend" classname="com.kyusui.app.data.api.CustomerApiContractTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

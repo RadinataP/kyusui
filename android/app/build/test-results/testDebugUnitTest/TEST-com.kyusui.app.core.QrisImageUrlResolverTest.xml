@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.core.QrisImageUrlResolverTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="0.032">
+  <properties/>
+  <testcase name="url absolut pada origin yang sama diterima" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.003"/>
+  <testcase name="golongan path tetap berada di host api" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.022"/>
+  <testcase name="PAY-004 url ke subdomain berbeda ditolak" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.0"/>
+  <testcase name="PAY-004 protocol relative url ditolak" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.002"/>
+  <testcase name="PAY-004 scheme huruf besar tidak melewati allowlist host" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.001"/>
+  <testcase name="nilai kosong ditolak" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.001"/>
+  <testcase name="path relatif dikirim ke origin api" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.0"/>
+  <testcase name="base url tanpa segmen path api tetap menghasilkan origin" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.0"/>
+  <testcase name="path relatif tanpa slash depan tetap dikirim ke origin api" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.001"/>
+  <testcase name="PAY-004 url absolut ke host lain ditolak" classname="com.kyusui.app.core.QrisImageUrlResolverTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

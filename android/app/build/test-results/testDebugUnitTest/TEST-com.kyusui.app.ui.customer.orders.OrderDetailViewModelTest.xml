@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:23" hostname="ADINATA" time="0.166">
+  <properties/>
+  <testcase name="detail is loading before the response arrives" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.036"/>
+  <testcase name="retry requests the same order again" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.035"/>
+  <testcase name="unknown backend status is not coerced into a business status" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.014"/>
+  <testcase name="unknown payment status is not coerced either" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.012"/>
+  <testcase name="unauthorized detail is flagged and not retryable" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.024"/>
+  <testcase name="blank order id fails fast without hitting the backend" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.016"/>
+  <testcase name="order totals come straight from the backend" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.017"/>
+  <testcase name="network failure becomes a retryable error" classname="com.kyusui.app.ui.customer.orders.OrderDetailViewModelTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

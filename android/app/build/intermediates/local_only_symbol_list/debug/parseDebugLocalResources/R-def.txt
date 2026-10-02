@@ -1,0 +1,26 @@
+R_DEF: Internal format may change without notice
+local
+color primary
+color primary_variant
+color secondary
+color secondary_variant
+color white
+mipmap ic_launcher
+mipmap ic_launcher_round
+string app_name
+string cancel
+string confirm
+string dismiss
+string empty_state
+string error_generic
+string error_network
+string error_server
+string error_unauthorized
+string loading
+string no
+string ok
+string retry
+string yes
+style Theme.Kyusui
+xml backup_rules
+xml data_extraction_rules

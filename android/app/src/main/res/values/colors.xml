@@ -1,0 +1,7 @@
+<resources>
+    <color name="primary">#006874</color>
+    <color name="primary_variant">#004F58</color>
+    <color name="secondary">#4A6367</color>
+    <color name="secondary_variant">#344C50</color>
+    <color name="white">#FFFFFF</color>
+</resources>

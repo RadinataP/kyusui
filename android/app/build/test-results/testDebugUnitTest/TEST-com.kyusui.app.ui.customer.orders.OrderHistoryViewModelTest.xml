@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:23" hostname="ADINATA" time="0.316">
+  <properties/>
+  <testcase name="order with unknown status stays in the active list" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.032"/>
+  <testcase name="unauthorized history is flagged as unauthorized" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.014"/>
+  <testcase name="first page reports more pages when total exceeds per page" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.012"/>
+  <testcase name="completed filter keeps finished orders" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.007"/>
+  <testcase name="failed append keeps loaded orders and stops further requests" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.021"/>
+  <testcase name="load next page is ignored when no further page exists" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.012"/>
+  <testcase name="a filter with no match reports a distinct empty message" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.013"/>
+  <testcase name="status filter survives appending another page" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.016"/>
+  <testcase name="empty history becomes empty state" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.011"/>
+  <testcase name="retry requests history again" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.02"/>
+  <testcase name="active filter keeps unfinished orders" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.018"/>
+  <testcase name="append merges the next page and does not duplicate existing orders" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.028"/>
+  <testcase name="orders are exposed in success state" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.055"/>
+  <testcase name="network failure becomes a retryable error" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.028"/>
+  <testcase name="history is loading before the response arrives" classname="com.kyusui.app.ui.customer.orders.OrderHistoryViewModelTest" time="0.022"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

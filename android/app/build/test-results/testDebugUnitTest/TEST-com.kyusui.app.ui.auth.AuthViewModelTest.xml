@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.auth.AuthViewModelTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:22" hostname="ADINATA" time="0.388">
+  <properties/>
+  <testcase name="server validation errors are mapped to the matching form field" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.2"/>
+  <testcase name="empty session leaves the app on login entry point" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.01"/>
+  <testcase name="login as courier resolves to courier entry point" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.011"/>
+  <testcase name="logout returns to login entry point" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.032"/>
+  <testcase name="clearError removes the message and the field errors" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.008"/>
+  <testcase name="short password is rejected before the request" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.014"/>
+  <testcase name="each canonical role maps to its own entry point" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.007"/>
+  <testcase name="restored session resolves entry point without asking for login again" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.012"/>
+  <testcase name="login as owner resolves to owner entry point" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.031"/>
+  <testcase name="failed restoration exposes a recoverable state" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.025"/>
+  <testcase name="login shows submitting state while the request is in flight" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.013"/>
+  <testcase name="blank credentials are rejected without hitting the network" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.011"/>
+  <testcase name="mismatched confirmation is rejected before the request" classname="com.kyusui.app.ui.auth.AuthViewModelTest" time="0.012"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

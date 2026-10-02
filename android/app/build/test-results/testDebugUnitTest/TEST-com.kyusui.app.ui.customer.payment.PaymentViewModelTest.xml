@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" tests="32" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:23" hostname="ADINATA" time="1.828">
+  <properties/>
+  <testcase name="order tanpa id tidak memanggil backend" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.719"/>
+  <testcase name="PAY-002 qris pending boleh mengunggah bukti" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.0"/>
+  <testcase name="PAY-001 hanya ada tiga status pembayaran canonical" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.0"/>
+  <testcase name="PAY-006 upload sukses hanya menghasilkan menunggu verifikasi" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.67"/>
+  <testcase name="upload ditolak ketika status sudah berubah di backend" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.022"/>
+  <testcase name="kegagalan upload dari backend ditampilkan apa adanya" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.038"/>
+  <testcase name="kegagalan memilih metode tidak mengubah state payment" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.016"/>
+  <testcase name="PAY-005 bukti yang ditolak menunggu upload ulang" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.001"/>
+  <testcase name="CASH-003 cash hanya lunas setelah backend mengonfirmasi" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.013"/>
+  <testcase name="qris tanpa gambar tidak bisa dipilih" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.042"/>
+  <testcase name="PAY-003 upload hanya tersedia setelah proof lolos pre-check" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.009"/>
+  <testcase name="payment yang belum dibuat bukan error fatal di layar pemilihan" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.011"/>
+  <testcase name="CASH-002 cash menunggu konfirmasi kurir sebelum dianggap lunas" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.007"/>
+  <testcase name="payment qris yang sudah berjalan tetap boleh dibuka meski QRIS dicabut" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.023"/>
+  <testcase name="PAY-006 bukti baru ditolak setelah lunas" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.002"/>
+  <testcase name="PAY-001 hanya ada dua metode pembayaran canonical" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.002"/>
+  <testcase name="memilih cash hanya mengirim method dan status datang dari backend" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.017"/>
+  <testcase name="PAY-002 proof yang gagal pre-check tidak pernah dikirim" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.017"/>
+  <testcase name="refresh membaca ulang payment dari backend dan mengganti status lokal" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.01"/>
+  <testcase name="unauthorized saat memuat payment ditandai untuk arahkan ke login" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.008"/>
+  <testcase name="PAY-006 bukti baru ditolak saat menunggu verifikasi" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.001"/>
+  <testcase name="upload kedua saat request berjalan ditolak sebagai duplicate submit" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.024"/>
+  <testcase name="cash tidak pernah bisa mengunggah bukti dari layar pembayaran" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.017"/>
+  <testcase name="cash tetap boleh dipilih saat qris belum dikonfigurasi" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.018"/>
+  <testcase name="PAY-004 bukti hanya disimpan sebagai status keberadaan" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.054"/>
+  <testcase name="CASH-001 cash tidak pernah bisa mengunggah bukti" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.0"/>
+  <testcase name="bukti yang masih diverifikasi bukan penolakan" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.001"/>
+  <testcase name="clearSubmitStates mengembalikan state aksi ke idle" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.013"/>
+  <testcase name="jaringan mati saat memuat payment dapat diulang" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.015"/>
+  <testcase name="PAY-001 request qris baru ditahan saat backend tidak punya QRIS aktif" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.02"/>
+  <testcase name="PAY-002 file kosong tidak pernah dikirim" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.017"/>
+  <testcase name="qris 404 terbaca sebagai belum dikonfigurasi dan tidak retryable" classname="com.kyusui.app.ui.customer.payment.PaymentViewModelTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

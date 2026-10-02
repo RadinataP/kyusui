@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.core.NetworkExceptionsTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="0.021">
+  <properties/>
+  <testcase name="all exceptions inherit from NetworkException" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.013"/>
+  <testcase name="validation exception has errors map" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.001"/>
+  <testcase name="parsing exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.0"/>
+  <testcase name="forbidden exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.0"/>
+  <testcase name="not found exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.0"/>
+  <testcase name="timeout exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.0"/>
+  <testcase name="unauthorized exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.001"/>
+  <testcase name="no network exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.0"/>
+  <testcase name="server exception has status code" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.002"/>
+  <testcase name="unknown exception has default message" classname="com.kyusui.app.core.NetworkExceptionsTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

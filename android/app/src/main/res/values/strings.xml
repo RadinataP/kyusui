@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">KyūSUI</string>
+    <string name="loading">Memuat...</string>
+    <string name="error_generic">Terjadi kesalahan</string>
+    <string name="error_network">Koneksi jaringan bermasalah</string>
+    <string name="error_unauthorized">Sesi berakhir, silakan login kembali</string>
+    <string name="error_server">Server tidak merespons</string>
+    <string name="empty_state">Tidak ada data</string>
+    <string name="retry">Coba lagi</string>
+    <string name="dismiss">Tutup</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Batal</string>
+    <string name="confirm">Konfirmasi</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
+</resources>

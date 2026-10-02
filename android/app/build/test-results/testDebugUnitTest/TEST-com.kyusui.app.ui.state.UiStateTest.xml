@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.state.UiStateTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:25" hostname="ADINATA" time="0.02">
+  <properties/>
+  <testcase name="map preserves loading" classname="com.kyusui.app.ui.state.UiStateTest" time="0.003"/>
+  <testcase name="loading state has correct properties" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="empty state has correct properties" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="error state has correct properties" classname="com.kyusui.app.ui.state.UiStateTest" time="0.0"/>
+  <testcase name="result toUiState conversion" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="companion object creates states" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="flatMap chains success" classname="com.kyusui.app.ui.state.UiStateTest" time="0.005"/>
+  <testcase name="map preserves empty" classname="com.kyusui.app.ui.state.UiStateTest" time="0.002"/>
+  <testcase name="map preserves error" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="flatMap can change state" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="success state has correct properties" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <testcase name="map transforms success" classname="com.kyusui.app.ui.state.UiStateTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

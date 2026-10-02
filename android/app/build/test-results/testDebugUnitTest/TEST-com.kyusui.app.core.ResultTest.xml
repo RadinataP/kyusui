@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.core.ResultTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="0.015">
+  <properties/>
+  <testcase name="flatMap preserves failure" classname="com.kyusui.app.core.ResultTest" time="0.004"/>
+  <testcase name="failure holds exception" classname="com.kyusui.app.core.ResultTest" time="0.0"/>
+  <testcase name="flatMap chains success" classname="com.kyusui.app.core.ResultTest" time="0.002"/>
+  <testcase name="toUnit maps success" classname="com.kyusui.app.core.ResultTest" time="0.002"/>
+  <testcase name="onFailure executes action" classname="com.kyusui.app.core.ResultTest" time="0.001"/>
+  <testcase name="getOrDefault returns default on failure" classname="com.kyusui.app.core.ResultTest" time="0.0"/>
+  <testcase name="getOrThrow throws on failure" classname="com.kyusui.app.core.ResultTest" time="0.0"/>
+  <testcase name="onSuccess executes action" classname="com.kyusui.app.core.ResultTest" time="0.001"/>
+  <testcase name="map preserves failure" classname="com.kyusui.app.core.ResultTest" time="0.001"/>
+  <testcase name="success holds data" classname="com.kyusui.app.core.ResultTest" time="0.001"/>
+  <testcase name="map transforms success" classname="com.kyusui.app.core.ResultTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

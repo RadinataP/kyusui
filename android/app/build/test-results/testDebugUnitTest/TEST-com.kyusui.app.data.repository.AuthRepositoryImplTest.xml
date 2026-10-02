@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.data.repository.AuthRepositoryImplTest" tests="16" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:19" hostname="ADINATA" time="2.182">
+  <properties/>
+  <testcase name="register does not send role because role comes from backend" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="1.501"/>
+  <testcase name="logout clears local session even when the server is unreachable" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.118"/>
+  <testcase name="unauthorized response during restoration clears the local session" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.213"/>
+  <testcase name="current user endpoint is mapped to domain user" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.023"/>
+  <testcase name="login sends the login field as required by the specification" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.031"/>
+  <testcase name="invalid credential returns unauthorized failure" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.03"/>
+  <testcase name="validation error keeps per field messages" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.034"/>
+  <testcase name="role from backend is preserved for each canonical role" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.016"/>
+  <testcase name="session restoration propagates network failure so user can retry" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.021"/>
+  <testcase name="current user also accepts an unwrapped user resource" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.025"/>
+  <testcase name="unknown role is rejected instead of silently treated as customer" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.03"/>
+  <testcase name="logout clears the local session" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.037"/>
+  <testcase name="logout clears local session even when the server rejects the request" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.016"/>
+  <testcase name="session restoration returns null when nothing is stored" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.028"/>
+  <testcase name="session restoration returns session built from stored token and current user" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.019"/>
+  <testcase name="successful login returns token and persists session" classname="com.kyusui.app.data.repository.AuthRepositoryImplTest" time="0.028"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

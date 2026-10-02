@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.core.ProofUploadPolicyTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="0.055">
+  <properties/>
+  <testcase name="mime kosong ditolak" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.023"/>
+  <testcase name="PAY-002 pdf ditolak" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <testcase name="mime generik dengan ekstensi yang diizinkan lolos" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.001"/>
+  <testcase name="jpg dan png pada ukuran wajar lolos" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <testcase name="PAY-002 file kosong ditolak" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.005"/>
+  <testcase name="mime generik tanpa nama file ditolak karena tidak ada petunjuk format" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.001"/>
+  <testcase name="PAY-002 mime generik dengan ekstensi tidak dikenal ditolak" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.001"/>
+  <testcase name="isAllowed mencerminkan daftar format yang diizinkan" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.003"/>
+  <testcase name="PAY-002 format gambar tidak didukung ditolak walau ekstensinya cocok" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <testcase name="PAY-002 file melebihi batas pre-check ditolak" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <testcase name="file tepat di batas pre-check tetap lolos" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <testcase name="alias mime dari picker dinormalisasi" classname="com.kyusui.app.core.ProofUploadPolicyTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

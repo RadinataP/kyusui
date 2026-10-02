@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:22" hostname="ADINATA" time="0.486">
+  <properties/>
+  <testcase name="empty cart never reaches the backend" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.24"/>
+  <testcase name="submit is rejected while a previous submit is still submitting" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.031"/>
+  <testcase name="cart without location never reaches the backend" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.018"/>
+  <testcase name="successful submit exposes the created order id" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.02"/>
+  <testcase name="forbidden submit error is not retryable" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.046"/>
+  <testcase name="submit is allowed again after a failure" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.021"/>
+  <testcase name="unauthorized submit error is flagged as unauthorized" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.012"/>
+  <testcase name="network failure produces a retryable submit error" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.012"/>
+  <testcase name="only product id and quantity are sent to the backend" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.016"/>
+  <testcase name="submitting twice only sends one request" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.009"/>
+  <testcase name="unavailable product is never added to the cart" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.004"/>
+  <testcase name="preview subtotal is computed from backend prices" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.001"/>
+  <testcase name="cart without address never reaches the backend" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.007"/>
+  <testcase name="cart is not submittable until address and location are set" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.001"/>
+  <testcase name="navigation is consumed once so the screen is not revisited" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.02"/>
+  <testcase name="setting quantity to zero removes the line" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.008"/>
+  <testcase name="clearing the cart resets preview and submit readiness" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.001"/>
+  <testcase name="adding the same product twice increases the quantity" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.001"/>
+  <testcase name="clearSubmitState returns the submit state to idle" classname="com.kyusui.app.ui.customer.createorder.CreateOrderViewModelTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

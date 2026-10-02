@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.ui.customer.products.ProductListViewModelTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:25" hostname="ADINATA" time="0.126">
+  <properties/>
+  <testcase name="products are exposed as success state" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.019"/>
+  <testcase name="append merges the next page and does not duplicate existing products" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.018"/>
+  <testcase name="first page without more results disables load more" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.012"/>
+  <testcase name="retry requests the first page again" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.019"/>
+  <testcase name="concurrent load more requests only trigger a single page request" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.018"/>
+  <testcase name="unauthorized response is flagged as unauthorized and not retryable" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.012"/>
+  <testcase name="network failure becomes retryable error state" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.009"/>
+  <testcase name="initial state is loading before the first response arrives" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.007"/>
+  <testcase name="empty product list becomes empty state, not success" classname="com.kyusui.app.ui.customer.products.ProductListViewModelTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

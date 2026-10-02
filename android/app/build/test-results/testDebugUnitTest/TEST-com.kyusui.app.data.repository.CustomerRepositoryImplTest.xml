@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.data.repository.CustomerRepositoryImplTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:21" hostname="ADINATA" time="0.84">
+  <properties/>
+  <testcase name="product prices come from the backend untouched" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.632"/>
+  <testcase name="server totals are returned as authoritative after creating an order" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.015"/>
+  <testcase name="unauthorized response surfaces as a failure" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.012"/>
+  <testcase name="order history is requested with pagination" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.02"/>
+  <testcase name="products are requested with the canonical pagination query" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.019"/>
+  <testcase name="create order sends only ids quantities and delivery location" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.018"/>
+  <testcase name="empty envelope payload is reported as a failure" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.095"/>
+  <testcase name="order detail is requested by order id" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.018"/>
+  <testcase name="invalid product id is reported as a failure instead of sending zero" classname="com.kyusui.app.data.repository.CustomerRepositoryImplTest" time="0.009"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

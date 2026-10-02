@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kyusui.app.data.api.AuthApiContractTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-10-02T20:44:09" hostname="ADINATA" time="8.913">
+  <properties/>
+  <testcase name="2xx response is returned untouched" classname="com.kyusui.app.data.api.AuthApiContractTest" time="8.276"/>
+  <testcase name="user resource with a string id is still accepted" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.432"/>
+  <testcase name="register response envelope decodes user and token" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.013"/>
+  <testcase name="validation error envelope maps field messages" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.021"/>
+  <testcase name="401 response throws unauthorized" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.038"/>
+  <testcase name="403 maps to forbidden" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.001"/>
+  <testcase name="422 response throws validation exception with field errors" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.009"/>
+  <testcase name="unexpected status maps to unknown exception" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.039"/>
+  <testcase name="login request serializes the login field not email" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.053"/>
+  <testcase name="401 maps to unauthorized with an Indonesian message" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.007"/>
+  <testcase name="nested error field names are reduced to the leaf name" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.001"/>
+  <testcase name="500 maps to server exception keeping the status code" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.0"/>
+  <testcase name="unknown field message is preserved so server detail is not lost" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.001"/>
+  <testcase name="current user without a resolvable payload returns null" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.001"/>
+  <testcase name="404 maps to not found" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.0"/>
+  <testcase name="duplicate identity conflict is reported as a field error" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.0"/>
+  <testcase name="408 maps to timeout" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.002"/>
+  <testcase name="current user decodes the enveloped user resource" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.0"/>
+  <testcase name="register request serializes password confirmation and no role" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.002"/>
+  <testcase name="non json error body does not crash the parser" classname="com.kyusui.app.data.api.AuthApiContractTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
