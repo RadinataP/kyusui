@@ -5,6 +5,12 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * Product Resource.
+ *
+ * Bentuk mengikuti `docs/06_KYUSUI_API_SPECIFICATION_REBUILT.md` section 7.3.
+ * Kolom database `availability` dipetakan ke field canonical `is_available`.
+ */
 class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -14,9 +20,7 @@ class ProductResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'price' => $this->price,
-            'availability' => $this->availability,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'is_available' => (bool) $this->availability,
         ];
     }
 }

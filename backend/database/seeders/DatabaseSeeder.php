@@ -21,7 +21,10 @@ class DatabaseSeeder extends Seeder
     {
         // Seed roles
         foreach (['CUSTOMER', 'OWNER', 'COURIER'] as $name) {
-            Role::firstOrCreate(['name' => $name]);
+            Role::firstOrCreate(
+                ['name' => $name],
+                ['display_name' => Role::defaultDisplayName($name)],
+            );
         }
 
         $customerRole = Role::where('name', 'CUSTOMER')->first();
@@ -81,10 +84,10 @@ class DatabaseSeeder extends Seeder
             Product::firstOrCreate(['name' => $p['name']], $p);
         }
 
-        // Seed business settings
-        BusinessSetting::firstOrCreate(
-            ['key' => 'qris_image_path'],
-            ['value' => 'qris/active.png']
+        // Seed konfigurasi singleton (13_DB section 21.2).
+        BusinessSetting::query()->updateOrCreate(
+            ['id' => BusinessSetting::SINGLETON_ID],
+            ['qris_image' => 'qris/active.png'],
         );
     }
 }

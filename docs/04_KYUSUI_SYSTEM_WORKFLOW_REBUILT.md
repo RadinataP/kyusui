@@ -928,8 +928,9 @@ stateDiagram-v2
     Selesai --> [*]
 ```
 
-Catatan: cancellation state tidak dimasukkan karena belum ditetapkan
-sebagai requirement final.
+Catatan: status `DIBATALKAN` ditetapkan sebagai keputusan bisnis (Pilihan A).
+Pembatalan hanya diperbolehkan pada status `MENUNGGU_PEMBAYARAN`.
+Status lain ditolak dengan HTTP 409.
 
 ------------------------------------------------------------------------
 

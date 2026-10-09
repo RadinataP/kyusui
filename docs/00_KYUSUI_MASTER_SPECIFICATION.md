@@ -898,8 +898,8 @@ Sebelum implementasi final, beberapa kebutuhan masih memerlukan validasi dengan 
 
 ### Order
 
-- Apakah pelanggan dapat membatalkan pesanan?
-- Sampai tahap apa pembatalan diperbolehkan?
+- Apakah pelanggan dapat membatalkan pesanan? **Ya, hanya pada status MENUNGGU_PEMBAYARAN (Pilihan A)**
+- Sampai tahap apa pembatalan diperbolehkan? **Hanya status MENUNGGU_PEMBAYARAN**
 - Apakah jumlah minimum/maksimum galon berlaku?
 - Apakah terdapat batas wilayah pengantaran?
 - Apakah terdapat biaya pengantaran?

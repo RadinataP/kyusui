@@ -592,7 +592,6 @@ Jangan mengarang:
 -   minimum order;
 -   jam operasional;
 -   status pesanan baru;
--   kebijakan pembatalan;
 -   aturan refund;
 -   aturan pembayaran;
 -   role baru;

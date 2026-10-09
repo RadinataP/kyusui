@@ -41,7 +41,7 @@ class DashboardController extends Controller
                 OrderStatus::DALAM_PENGANTARAN->value,
             ];
             $ordersQuery = $customer->orders();
-            $completedOrders = (clone $ordersQuery)->where('status', OrderStatus::SELESAI->value);
+            $completedOrders = (clone $ordersQuery)->where('order_status', OrderStatus::SELESAI->value);
             $favoriteProduct = DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->join('products', 'products.id', '=', 'order_items.product_id')
@@ -52,8 +52,8 @@ class DashboardController extends Controller
                 ->orderByDesc('order_count')
                 ->first();
             $activeOrders = (clone $ordersQuery)
-                ->whereIn('status', $activeStatuses)
-                ->with(['payment', 'items.product', 'assignments.courier.user:id,name'])
+                ->whereIn('order_status', $activeStatuses)
+                ->with(['payment', 'items', 'assignments.courier.user:id,name'])
                 ->latest('id')
                 ->limit(5)
                 ->get();
@@ -61,8 +61,8 @@ class DashboardController extends Controller
                 'user' => new UserResource($user->load('role')),
                 'summary' => [
                     'total_orders' => (clone $ordersQuery)->count(),
-                    'active_orders' => (clone $ordersQuery)->whereIn('status', $activeStatuses)->count(),
-                    'total_spent' => (float) ($completedOrders->sum('total') ?? 0),
+                    'active_orders' => (clone $ordersQuery)->whereIn('order_status', $activeStatuses)->count(),
+                    'total_spent' => (float) ($completedOrders->sum('total_amount') ?? 0),
                     'total_completed_orders' => $completedOrders->count(),
                     'favorite_product' => $favoriteProduct ? [
                         'id' => $favoriteProduct->id,
@@ -92,15 +92,15 @@ class DashboardController extends Controller
             $monthStart = now()->startOfMonth();
             $orderMetrics = DB::table('orders')
                 ->selectRaw('COUNT(*) as total_orders')
-                ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as waiting_process', [OrderStatus::MENUNGGU_DIPROSES->value])
-                ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as completed_orders', [OrderStatus::SELESAI->value])
-                ->selectRaw('COALESCE(SUM(CASE WHEN status = ? AND updated_at >= ? THEN total ELSE 0 END), 0) as today_revenue', [OrderStatus::SELESAI->value, $today])
-                ->selectRaw('COALESCE(SUM(CASE WHEN status = ? AND updated_at >= ? THEN total ELSE 0 END), 0) as month_revenue', [OrderStatus::SELESAI->value, $monthStart])
-                ->selectRaw('COALESCE(AVG(CASE WHEN status = ? THEN total END), 0) as avg_order_value', [OrderStatus::SELESAI->value])
-                ->selectRaw('COALESCE(100.0 * SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 0) as completion_rate', [OrderStatus::SELESAI->value])
+                ->selectRaw('SUM(CASE WHEN order_status = ? THEN 1 ELSE 0 END) as waiting_process', [OrderStatus::MENUNGGU_DIPROSES->value])
+                ->selectRaw('SUM(CASE WHEN order_status = ? THEN 1 ELSE 0 END) as completed_orders', [OrderStatus::SELESAI->value])
+                ->selectRaw('COALESCE(SUM(CASE WHEN order_status = ? AND completed_at >= ? THEN total_amount ELSE 0 END), 0) as today_revenue', [OrderStatus::SELESAI->value, $today])
+                ->selectRaw('COALESCE(SUM(CASE WHEN order_status = ? AND completed_at >= ? THEN total_amount ELSE 0 END), 0) as month_revenue', [OrderStatus::SELESAI->value, $monthStart])
+                ->selectRaw('COALESCE(AVG(CASE WHEN order_status = ? THEN total_amount END), 0) as avg_order_value', [OrderStatus::SELESAI->value])
+                ->selectRaw('COALESCE(100.0 * SUM(CASE WHEN order_status = ? THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 0) as completion_rate', [OrderStatus::SELESAI->value])
                 ->first();
             $paymentMetrics = DB::table('payments')
-                ->selectRaw('SUM(CASE WHEN method = ? AND status = ? THEN 1 ELSE 0 END) as waiting_qris_verification', [PaymentMethod::QRIS->value, PaymentStatus::WAITING_VERIFICATION->value])
+                ->selectRaw('SUM(CASE WHEN payment_method = ? AND payment_status = ? THEN 1 ELSE 0 END) as waiting_qris_verification', [PaymentMethod::QRIS->value, PaymentStatus::WAITING_VERIFICATION->value])
                 ->first();
             $assignmentMetrics = DB::table('courier_assignments')
                 ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as active_deliveries', [AssignmentStatus::ACTIVE->value])
@@ -120,17 +120,17 @@ class DashboardController extends Controller
                     'completion_rate' => (float) $orderMetrics->completion_rate,
                 ],
                 'recent_orders' => DashboardOrderResource::collection(
-                    Order::with(['customer.user:id,name', 'payment', 'items.product', 'assignments'])
+                    Order::with(['customer.user:id,name', 'payment', 'items', 'assignments'])
                         ->latest('id')->limit(5)->get()
                 ),
                 'waiting_orders' => DashboardOrderResource::collection(
-                    Order::whereIn('status', $waitingStatuses)
-                        ->with(['customer.user:id,name', 'payment', 'items.product', 'assignments'])
+                    Order::whereIn('order_status', $waitingStatuses)
+                        ->with(['customer.user:id,name', 'payment', 'items', 'assignments'])
                         ->latest('id')->limit(5)->get()
                 ),
                 'pending_qris_payments' => DashboardPaymentResource::collection(
-                    Payment::where('method', PaymentMethod::QRIS->value)
-                        ->where('status', PaymentStatus::WAITING_VERIFICATION->value)
+                    Payment::where('payment_method', PaymentMethod::QRIS->value)
+                        ->where('payment_status', PaymentStatus::WAITING_VERIFICATION->value)
                         ->with('order.customer.user:id,name')
                         ->latest('id')->limit(5)->get()
                 ),
@@ -170,10 +170,10 @@ class DashboardController extends Controller
             $monthDeliveries = (clone $monthAssignments)->count();
             $activeAssignment = $courier->assignments()
                 ->where('status', AssignmentStatus::ACTIVE->value)
-                ->with(['order.customer.user:id,name', 'order.payment', 'order.items.product:id,name', 'order.assignments'])
+                ->with(['order.customer.user:id,name', 'order.payment', 'order.items', 'order.assignments'])
                 ->latest('id')->first();
             $todayAssignmentRecords = $todayAssignments
-                ->with(['order.customer.user:id,name', 'order.payment', 'order.items.product:id,name', 'order.assignments'])
+                ->with(['order.customer.user:id,name', 'order.payment', 'order.items', 'order.assignments'])
                 ->latest('assigned_at')->limit(20)->get();
             $data = [
                 'active_assignment' => $activeAssignment ? new DashboardOrderResource($activeAssignment->order) : null,

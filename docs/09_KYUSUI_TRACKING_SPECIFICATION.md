@@ -1279,13 +1279,32 @@ order has valid delivery assignment
 ```json
 {
   "data": {
-    "order_id": 1001,
+    "id": 501,
     "assignment_id": 501,
+    "order_id": 1001,
+    "courier_id": 20,
     "status": "ACTIVE",
+    "assigned_at": "2026-09-30T08:00:00Z",
+    "started_at": "2026-09-30T09:00:00Z",
+    "completed_at": null,
     "courier": {
       "id": 20,
       "name": "Courier"
     },
+    "locations": [
+      {
+        "latitude": -0.9473000,
+        "longitude": 100.4176000,
+        "accuracy_meters": 8.50,
+        "recorded_at": "2026-09-20T10:15:20Z"
+      },
+      {
+        "latitude": -0.9470000,
+        "longitude": 100.4170000,
+        "accuracy_meters": 9.20,
+        "recorded_at": "2026-09-20T10:10:15Z"
+      }
+    ],
     "location": {
       "latitude": -0.9473000,
       "longitude": 100.4176000,
@@ -1297,13 +1316,38 @@ order has valid delivery assignment
 }
 ```
 
-Jika belum ada location sample:
+Jika assignment aktif tapi belum ada location sample:
 
-```text
-location = null
+```json
+{
+  "data": {
+    "id": 501,
+    "assignment_id": 501,
+    "order_id": 1001,
+    "courier_id": 20,
+    "status": "ACTIVE",
+    "assigned_at": "2026-09-30T08:00:00Z",
+    "started_at": "2026-09-30T09:00:00Z",
+    "completed_at": null,
+    "courier": {
+      "id": 20,
+      "name": "Courier"
+    },
+    "locations": [],
+    "location": null
+  },
+  "message": "Tracking retrieved."
+}
 ```
 
-dan UI harus menampilkan kondisi bahwa posisi belum tersedia, bukan koordinat palsu.
+Jika tidak ada assignment aktif:
+
+```json
+{
+  "data": null,
+  "message": "Tracking location is not available yet."
+}
+```
 
 ---
 

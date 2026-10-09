@@ -21,7 +21,10 @@ class CanonicalApiTest extends TestCase
         parent::setUp();
 
         foreach (['CUSTOMER', 'OWNER', 'COURIER'] as $roleName) {
-            Role::create(['name' => $roleName]);
+            Role::create([
+                'name' => $roleName,
+                'display_name' => Role::defaultDisplayName($roleName),
+            ]);
         }
     }
 
@@ -58,6 +61,23 @@ class CanonicalApiTest extends TestCase
             ->assertJsonPath('data.0.order_id', $customerOrder->id)
             ->assertJsonPath('data.0.payment_method', 'QRIS')
             ->assertJsonPath('meta.total', 1);
+
+        $this->actingAs($customerUser)
+            ->getJson('/api/v1/customer/payments?payment_method=BANK_TRANSFER')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Data yang dikirim tidak valid.');
+    }
+
+    public function test_payment_history_is_empty_when_customer_has_no_payment_record(): void
+    {
+        $customerUser = $this->userWithRole('CUSTOMER');
+        Customer::create(['user_id' => $customerUser->id]);
+
+        $this->actingAs($customerUser)
+            ->getJson('/api/v1/customer/payments')
+            ->assertOk()
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('meta.total', 0);
     }
 
     public function test_courier_can_confirm_cash_using_canonical_order_endpoint(): void
@@ -77,8 +97,22 @@ class CanonicalApiTest extends TestCase
         $this->actingAs($courierUser)
             ->postJson('/api/v1/courier/orders/'.$order->id.'/payment-confirmation')
             ->assertOk()
-            ->assertJsonPath('data.payment_method', 'CASH')
-            ->assertJsonPath('data.payment_status', 'PAID');
+            ->assertJsonPath('data.payment.payment_method', 'CASH')
+            ->assertJsonPath('data.payment.payment_status', 'PAID');
+    }
+
+    public function test_customer_without_payment_record_sees_null_payment_on_order_resource(): void
+    {
+        $customerUser = $this->userWithRole('CUSTOMER');
+        $customer = Customer::create(['user_id' => $customerUser->id]);
+        $order = $this->createOrder($customer, 'CASH', 'PENDING', 'MENUNGGU_PEMBAYARAN', false);
+
+        $this->actingAs($customerUser)
+            ->getJson('/api/v1/customer/orders/'.$order->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $order->id)
+            ->assertJsonPath('data.payment', null)
+            ->assertJsonPath('data.order_number', $order->order_number);
     }
 
     private function userWithRole(string $roleName): User
@@ -93,20 +127,25 @@ class CanonicalApiTest extends TestCase
         string $paymentMethod,
         string $paymentStatus,
         string $orderStatus = 'MENUNGGU_PEMBAYARAN',
+        bool $withPayment = true,
     ): Order {
         $order = $customer->orders()->create([
-            'status' => $orderStatus,
-            'subtotal' => 100,
+            'order_status' => $orderStatus,
+            'subtotal_amount' => 100,
             'delivery_fee' => 0,
-            'total' => 100,
+            'total_amount' => 100,
             'delivery_address' => 'Jl. Test',
+            'placed_at' => now(),
         ]);
-        Payment::create([
-            'order_id' => $order->id,
-            'method' => $paymentMethod,
-            'status' => $paymentStatus,
-            'amount' => 100,
-        ]);
+
+        if ($withPayment) {
+            Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => $paymentMethod,
+                'payment_status' => $paymentStatus,
+                'amount' => 100,
+            ]);
+        }
 
         return $order->fresh('payment');
     }

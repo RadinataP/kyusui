@@ -8,12 +8,14 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Events\BusinessActionOccurred;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CourierLocationResource;
+use App\Http\Resources\PaymentResource;
 use App\Models\CourierAssignment;
 use App\Models\CourierLocation;
+use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
-use App\Models\Notification;
 use Carbon\CarbonImmutable;
 use Exception;
 use Illuminate\Database\QueryException;
@@ -25,13 +27,31 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class CourierController extends Controller
 {
+    /**
+     * Preserved endpoint `POST /courier/orders/{order}/payment-confirmation`.
+     *
+     * Spec 06 section 12.4 mendefinisikan konfirmasi CASH sebagai aksi status
+     * server-controlled. Endpoint ini tetap dipertahankan karena klien aktif
+     * memakainya, tetapi sekarang konsisten dengan
+     * `POST /courier/assignments/{assignment}/cash/confirm`: konflik state
+     * menghasilkan `409`, bukan `404` (audit P2-16). `404` hanya dipakai saat
+     * order memang tidak punya assignment milik kurir ini, yaitu saat
+     * keberadaan resource tidak boleh bocor (spec 06 section 5.6).
+     */
     public function confirmOrderPayment(Request $request, Order $order): JsonResponse
     {
         $courierId = $this->courierId($request);
         $assignment = $order->assignments()
             ->where('courier_id', $courierId)
-            ->where('status', AssignmentStatus::ACTIVE->value)
-            ->firstOrFail();
+            ->latest('id')
+            ->first();
+
+        abort_if($assignment === null, 404, 'Data tidak ditemukan.');
+        abort_if(
+            $assignment->status !== AssignmentStatus::ACTIVE,
+            409,
+            'Pembayaran tunai hanya dapat dikonfirmasi saat pengantaran aktif.',
+        );
 
         return $this->cash($request, $assignment);
     }
@@ -45,24 +65,36 @@ class CourierController extends Controller
         return $courierId;
     }
 
+    /**
+     * Spec 06 section 5.6: assignment milik courier lain harus 404, bukan 403,
+     * supaya keberadaan pengantaran tidak bisa ditebak.
+     */
     private function own(Request $request, CourierAssignment $assignment): CourierAssignment
     {
-        abort_unless(
-            $assignment->courier_id === $this->courierId($request),
-            403,
-            'Anda tidak memiliki akses ke pengantaran ini.'
-        );
+        abort_unless($assignment->courier_id === $this->courierId($request), 404);
 
         return $assignment;
     }
 
+    /**
+     * Bentuk payload assignment kurir.
+     *
+     * Preserved endpoint: nama key `status`, `subtotal`, `total`,
+     * `payment.method`, dan `payment.status` sengaja dipertahankan karena
+     * endpoint ini berada di luar katalog spec 06 section 30 dan klien aktif
+     * memparsing key tersebut (`CourierAssignmentOrderDto`). Yang diubah hanya
+     * sumber kolomnya menjadi nama canonical `order_status`, `subtotal_amount`,
+     * `total_amount`, `payment_method`, dan `payment_status`
+     * (`docs/05_KYUSUI_DATABASE_SCHEMA_REBUILT.md` section 11 dan
+     * `docs/13_KYUSUI_DATABASE_FINALIZATION.md` section 9.2).
+     */
     private function assignmentData(CourierAssignment $assignment): array
     {
         $assignment->load([
             'order.customer.user:id,name',
             'order.items.product',
             'order.payment',
-            'locations',
+            'latestLocation',
         ]);
 
         return [
@@ -73,25 +105,25 @@ class CourierController extends Controller
             'completed_at' => $assignment->completed_at,
             'order' => [
                 'id' => $assignment->order->id,
-                'status' => $assignment->order->status,
-                'subtotal' => $assignment->order->subtotal,
-                'total' => $assignment->order->total,
+                'status' => $assignment->order->order_status,
+                'subtotal' => $assignment->order->subtotal_amount,
+                'total' => $assignment->order->total_amount,
                 'delivery_address' => $assignment->order->delivery_address,
                 'customer' => [
                     'name' => $assignment->order->customer->user->name,
                 ],
                 'items' => $assignment->order->items->map(fn ($item) => [
-                    'product_name' => $item->product->name,
+                    'product_name' => $item->product_name ?? $item->product?->name,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'line_total' => $item->line_total,
                 ]),
-                'payment' => [
-                    'method' => $assignment->order->payment->method,
-                    'status' => $assignment->order->payment->status,
+                'payment' => $assignment->order->payment === null ? null : [
+                    'method' => $assignment->order->payment->payment_method,
+                    'status' => $assignment->order->payment->payment_status,
                 ],
             ],
-            'latest_location' => $assignment->locations->last(),
+            'latest_location' => $assignment->latestLocation,
         ];
     }
 
@@ -132,7 +164,7 @@ class CourierController extends Controller
 
                 abort_unless(
                     $lockedAssignment->status === AssignmentStatus::ASSIGNED
-                    && $order->status === OrderStatus::DITUGASKAN->value,
+                    && $order->order_status === OrderStatus::DITUGASKAN->value,
                     409,
                     'Pengantaran tidak dapat dimulai karena status pengantaran tidak sesuai.'
                 );
@@ -152,11 +184,12 @@ class CourierController extends Controller
                     'status' => AssignmentStatus::ACTIVE->value,
                     'started_at' => now(),
                 ]);
-                $order->update(['status' => OrderStatus::DALAM_PENGANTARAN->value]);
+                $order->update(['order_status' => OrderStatus::DALAM_PENGANTARAN->value]);
                 $order->statusHistories()->create([
                     'from_status' => OrderStatus::DITUGASKAN->value,
                     'to_status' => OrderStatus::DALAM_PENGANTARAN->value,
-                    'changed_by' => $request->user()->id,
+                    'changed_by_user_id' => $request->user()->id,
+                    'changed_at' => now(),
                 ]);
 
                 Log::info('Courier delivery started.', $this->logContext($lockedAssignment, $request));
@@ -177,7 +210,13 @@ class CourierController extends Controller
             type: 'DELIVERY_STARTED',
             title: 'Pengantaran Dimulai',
             body: 'Pesanan Anda sedang diantarkan oleh Courier.',
-            data: ['order_id' => $order->id, 'assignment_id' => $assignment->id],
+            // `order_status` adalah event-specific field untuk
+            // `DELIVERY_STARTED` pada spec 10 §16 dan tabel §19.
+            data: [
+                'order_id' => $order->id,
+                'assignment_id' => $assignment->id,
+                'order_status' => $order->order_status,
+            ],
         ));
 
         return response()->json([
@@ -195,7 +234,6 @@ class CourierController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['required', 'numeric', 'min:0', 'max:10000'],
             'recorded_at' => ['nullable', 'date'],
-            'idempotency_key' => ['nullable', 'string', 'max:64'],
         ]);
 
         try {
@@ -205,20 +243,10 @@ class CourierController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
                 $order = Order::query()->whereKey($lockedAssignment->order_id)->lockForUpdate()->firstOrFail();
-                $existing = isset($validated['idempotency_key'])
-                    ? CourierLocation::query()
-                        ->where('assignment_id', $lockedAssignment->id)
-                        ->where('idempotency_key', $validated['idempotency_key'])
-                        ->first()
-                    : null;
-
-                if ($existing !== null) {
-                    return $existing;
-                }
 
                 abort_unless(
                     $lockedAssignment->status === AssignmentStatus::ACTIVE
-                    && $order->status === OrderStatus::DALAM_PENGANTARAN->value,
+                    && $order->order_status === OrderStatus::DALAM_PENGANTARAN->value,
                     409,
                     'Lokasi belum dapat diperbarui karena pengantaran belum aktif.'
                 );
@@ -227,7 +255,7 @@ class CourierController extends Controller
                     ? CarbonImmutable::parse($validated['recorded_at'])
                     : CarbonImmutable::now();
                 $previous = CourierLocation::query()
-                    ->where('assignment_id', $lockedAssignment->id)
+                    ->where('courier_assignment_id', $lockedAssignment->id)
                     ->latest('recorded_at')
                     ->latest('id')
                     ->first();
@@ -256,7 +284,6 @@ class CourierController extends Controller
                     'longitude' => $validated['longitude'],
                     'accuracy_meters' => $validated['accuracy_meters'],
                     'recorded_at' => $recordedAt,
-                    'idempotency_key' => $validated['idempotency_key'] ?? null,
                 ]);
 
                 Log::info('Courier location updated.', $this->logContext($lockedAssignment, $request));
@@ -288,8 +315,15 @@ class CourierController extends Controller
             ));
         }
 
+        // Spec 09 §29.1 menetapkan `data.location` berisi koordinat, accuracy, dan
+        // waktu rekaman saja. Sebelum ini endpoint mengembalikan model
+        // Eloquent mentah sehingga `courier_assignment_id` dan `courier_id`
+        // ikut terekspos ke klien.
         return response()->json([
-            'data' => $location,
+            'data' => [
+                'accepted' => true,
+                'location' => new CourierLocationResource($location),
+            ],
             'message' => 'Lokasi berhasil diperbarui.',
         ], 200);
     }
@@ -308,16 +342,16 @@ class CourierController extends Controller
 
                 abort_unless(
                     $lockedAssignment->status === AssignmentStatus::ACTIVE
-                    && $order->status === OrderStatus::DALAM_PENGANTARAN->value,
+                    && $order->order_status === OrderStatus::DALAM_PENGANTARAN->value,
                     409,
                     'Pembayaran tunai hanya dapat dikonfirmasi saat pengantaran aktif.'
                 );
 
                 $payment = Payment::query()->where('order_id', $order->id)->lockForUpdate()->first();
                 abort_if($payment === null, 409, 'Pembayaran untuk pesanan ini tidak ditemukan.');
-                abort_if($payment->method !== PaymentMethod::CASH->value, 409, 'Pembayaran ini bukan pembayaran tunai.');
-                abort_if($payment->status === PaymentStatus::PAID->value, 409, 'Pembayaran sudah lunas.');
-                abort_unless($payment->status === PaymentStatus::PENDING->value, 409, 'Pembayaran tidak dapat dikonfirmasi pada status saat ini.');
+                abort_if($payment->payment_method !== PaymentMethod::CASH->value, 409, 'Pembayaran ini bukan pembayaran tunai.');
+                abort_if($payment->payment_status === PaymentStatus::PAID->value, 409, 'Pembayaran sudah lunas.');
+                abort_unless($payment->payment_status === PaymentStatus::PENDING->value, 409, 'Pembayaran tidak dapat dikonfirmasi pada status saat ini.');
 
                 $payment->transitionTo(PaymentStatus::PAID, $request->user()->id);
                 Log::info('Courier cash payment confirmed.', $this->logContext($lockedAssignment, $request));
@@ -340,15 +374,23 @@ class CourierController extends Controller
             type: 'PAYMENT_CASH_CONFIRMED',
             title: 'Pembayaran Tunai Dikonfirmasi',
             body: 'Pembayaran tunai pesanan Anda telah dikonfirmasi.',
-            data: ['order_id' => $order->id, 'payment_id' => $payment->id],
+            // `payment_method` dan `payment_status` adalah event-specific field untuk
+            // `PAYMENT_CASH_CONFIRMED` pada spec 10 §11 dan tabel §19.
+            data: [
+                'order_id' => $order->id,
+                'payment_id' => $payment->id,
+                'payment_method' => $payment->payment_method,
+                'payment_status' => $payment->payment_status,
+            ],
         ));
 
         return response()->json([
+            // Spec 06 section 14.2 menetapkan konfirmasi CASH di dalam
+            // `data.payment`, bukan datar datar. Bentuk payment memakai
+            // PaymentResource (spec 06 section 7.5) supaya hanya ada satu
+            // representasi payment di API dan tidak ada field yang diarang.
             'data' => [
-                'id' => $payment->id,
-                'payment_method' => $payment->method,
-                'payment_status' => $payment->status,
-                'verified_at' => $payment->verified_at,
+                'payment' => new PaymentResource($payment),
             ],
             'message' => 'Pembayaran tunai berhasil dikonfirmasi.',
         ], 200);
@@ -369,14 +411,14 @@ class CourierController extends Controller
 
                 abort_unless(
                     $lockedAssignment->status === AssignmentStatus::ACTIVE
-                    && $order->status === OrderStatus::DALAM_PENGANTARAN->value,
+                    && $order->order_status === OrderStatus::DALAM_PENGANTARAN->value,
                     409,
                     'Pengantaran tidak dapat diselesaikan karena status saat ini tidak sesuai.'
                 );
                 abort_if($payment === null, 409, 'Pengantaran tidak dapat diselesaikan karena pembayaran tidak ditemukan.');
                 abort_unless(
-                    in_array($payment->method, [PaymentMethod::QRIS->value, PaymentMethod::CASH->value], true)
-                    && $payment->status === PaymentStatus::PAID->value,
+                    in_array($payment->payment_method, [PaymentMethod::QRIS->value, PaymentMethod::CASH->value], true)
+                    && $payment->payment_status === PaymentStatus::PAID->value,
                     409,
                     'Pengantaran tidak dapat diselesaikan karena pembayaran belum lunas.'
                 );
@@ -385,11 +427,15 @@ class CourierController extends Controller
                     'status' => AssignmentStatus::COMPLETED->value,
                     'completed_at' => now(),
                 ]);
-                $order->update(['status' => OrderStatus::SELESAI->value]);
+                $order->update([
+                    'order_status' => OrderStatus::SELESAI->value,
+                    'completed_at' => now(),
+                ]);
                 $order->statusHistories()->create([
                     'from_status' => OrderStatus::DALAM_PENGANTARAN->value,
                     'to_status' => OrderStatus::SELESAI->value,
-                    'changed_by' => $request->user()->id,
+                    'changed_by_user_id' => $request->user()->id,
+                    'changed_at' => now(),
                 ]);
 
                 Log::info('Courier delivery completed.', $this->logContext($lockedAssignment, $request));
@@ -405,7 +451,13 @@ class CourierController extends Controller
         }
 
         $completedOrder = Order::query()->with(['customer.user', 'assignments.courier.user'])->findOrFail($assignment->order_id);
-        $notificationData = ['order_id' => $completedOrder->id, 'assignment_id' => $assignment->id];
+        // `order_status` adalah event-specific field untuk
+        // `ORDER_COMPLETED` pada spec 10 §18 dan tabel §19.
+        $notificationData = [
+            'order_id' => $completedOrder->id,
+            'assignment_id' => $assignment->id,
+            'order_status' => $completedOrder->order_status,
+        ];
         $recipientUserIds = collect([$completedOrder->customer->user_id, $request->user()->id])
             ->merge(
                 User::query()

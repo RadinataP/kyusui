@@ -6,32 +6,33 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Payment Resource.
+ * Owner pending QRIS verification resource.
  *
- * Bentuk mengikuti `docs/06_KYUSUI_API_SPECIFICATION_REBUILT.md` section 7.5.
- * Nama kolom database sudah sama dengan nama field canonical
- * `payment_method`, `payment_status`, dan `proof_image`
- * (`docs/13_KYUSUI_DATABASE_FINALIZATION.md` section 9.2).
- *
- * Field provider (provider_name, provider_reference, transaction_id,
- * payment_url, webhook_status) tidak pernah dikembalikan (13_DB section 9.3).
+ * Bentuk mengikuti `docs/06_KYUSUI_API_SPECIFICATION_REBUILT.md` section 12.1.
+ * Berbeda dengan `PaymentResource` (section 7.5), daftar ini juga membawa
+ * `order_number` dan ringkasan customer karena itu konteks kerja owner.
  */
-class PaymentResource extends JsonResource
+class OwnerPendingPaymentResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
+        $order = $this->relationLoaded('order') ? $this->order : null;
+
         return [
             'id' => $this->id,
             'order_id' => $this->order_id,
+            'order_number' => $order?->order_number,
+            'customer' => $order === null || $order->customer === null ? null : [
+                'id' => $order->customer->id,
+                'name' => $order->customer->user?->name,
+            ],
             'payment_method' => $this->payment_method,
             'payment_status' => $this->payment_status,
             'amount' => $this->amount,
             'proof' => new PaymentProofResource($this->proof_image),
-            'verified_by' => $this->verified_by,
-            'verified_at' => $this->verified_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

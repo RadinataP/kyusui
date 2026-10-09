@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -28,62 +29,56 @@ class AuthController extends Controller
                 'confirmed',
                 Password::min(8)->letters()->numbers()->mixedCase(),
             ],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:20', Rule::unique('customers', 'phone')],
             'address' => ['nullable', 'string', 'max:500'],
         ]);
 
-        try {
-            $user = DB::transaction(function () use ($validated): User {
-                $customerRole = Role::where('name', 'CUSTOMER')->firstOrFail();
+        $user = DB::transaction(function () use ($validated): User {
+            $customerRole = Role::where('name', 'CUSTOMER')->firstOrFail();
 
-                $user = User::create([
-                    'name' => $validated['name'],
-                    'email' => $validated['email'],
-                    'password' => Hash::make($validated['password']),
-                    'role_id' => $customerRole->id,
-                ]);
-
-                Customer::create([
-                    'user_id' => $user->id,
-                    'phone' => $validated['phone'] ?? null,
-                    'address' => $validated['address'] ?? null,
-                ]);
-
-                return $user;
-            });
-
-            Log::info('User registered successfully', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ]);
-
-            $token = $user->createToken(
-                name: 'android',
-                abilities: ['customer:*'],
-                expiresAt: now()->addDays(30)
-            );
-
-            return response()->json([
-                'data' => [
-                    'user' => new UserResource($user->load(['role', 'customer'])),
-                    'token' => $token->plainTextToken,
-                    'token_type' => 'Bearer',
-                    'expires_at' => $token->accessToken->expires_at,
-                ],
-                'message' => 'Registrasi berhasil.',
-            ], 201);
-
-        } catch (\Exception $e) {
-            Log::error('Registration failed', [
+            $user = User::create([
+                'name' => $validated['name'],
                 'email' => $validated['email'],
-                'error' => $e->getMessage(),
+                'password' => Hash::make($validated['password']),
+                'role_id' => $customerRole->id,
             ]);
 
-            return response()->json([
-                'message' => 'Registrasi gagal. Silakan coba lagi.',
-            ], 500);
-        }
+            Customer::create([
+                'user_id' => $user->id,
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+            ]);
+
+            return $user;
+        });
+
+        Log::info('User registered successfully', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+        ]);
+
+        $token = $user->createToken(
+            name: 'android',
+            abilities: ['customer:*'],
+            expiresAt: now()->addDays(30)
+        );
+
+        return response()->json([
+            'data' => [
+                'user' => new UserResource($user->load(['role', 'customer'])),
+                'token' => $token->plainTextToken,
+                'token_type' => 'Bearer',
+                'expires_at' => $token->accessToken->expires_at,
+            ],
+            'message' => 'Registrasi berhasil.',
+        ], 201);
     }
+
+    // Spec 06 section 5.2: konflik keunikan adalah kondisi validasi dan sudah
+    // tertangkap oleh aturan `unique` di atas sebagai HTTP 422. Tidak ada lagi
+    // catch-all `\Exception` di method ini: kondisi yang tidak terduga
+    // dibiarkan oleh renderer global pada `bootstrap/app.php` menjadi HTTP 500
+    // dengan envelope generik, tanpa membocorkan pesan exception mentah.
 
     public function login(Request $request): JsonResponse
     {

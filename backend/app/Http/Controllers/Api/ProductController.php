@@ -36,7 +36,6 @@ class ProductController extends Controller
             'data' => ProductResource::collection($products),
             'meta' => [
                 'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
             ],
@@ -76,7 +75,6 @@ class ProductController extends Controller
             'data' => ProductResource::collection($products),
             'meta' => [
                 'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
             ],
@@ -148,9 +146,6 @@ class ProductController extends Controller
     public function destroy(Request $request, Product $product): JsonResponse
     {
         $this->authorizeOwner($request);
-
-        // Cegah disable jika produk sedang ada di order aktif (opsional, tapi bagus untuk UX)
-        // Untuk sekarang, kita izinkan disable, order lama tetap aman karena unit_price sudah tersimpan.
 
         $product->update(['availability' => false]);
 

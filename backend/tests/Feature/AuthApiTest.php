@@ -20,7 +20,10 @@ class AuthApiTest extends TestCase
         parent::setUp();
 
         foreach (['CUSTOMER', 'OWNER', 'COURIER'] as $name) {
-            Role::create(['name' => $name]);
+            Role::create([
+                'name' => $name,
+                'display_name' => Role::defaultDisplayName($name),
+            ]);
         }
     }
 
@@ -37,6 +40,7 @@ class AuthApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('message', 'Registrasi berhasil.')
             ->assertJsonPath('data.user.role.name', 'CUSTOMER')
+            ->assertJsonPath('data.user.status', 'ACTIVE')
             ->assertJsonMissingPath('data.user.password');
         $this->assertDatabaseHas('customers', ['user_id' => $response->json('data.user.id')]);
         $this->assertDatabaseMissing('owners', ['user_id' => $response->json('data.user.id')]);
@@ -71,6 +75,7 @@ class AuthApiTest extends TestCase
             $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'password'])
                 ->assertOk()
                 ->assertJsonPath('data.user.role.name', $role)
+                ->assertJsonPath('data.user.role.display_name', Role::defaultDisplayName($role))
                 ->assertJsonPath('message', 'Login berhasil.')
                 ->assertJsonStructure(['data' => ['user', 'token']]);
         }

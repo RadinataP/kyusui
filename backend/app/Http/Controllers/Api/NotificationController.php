@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\NotificationResource;
 use App\Http\Resources\DeviceTokenResource;
+use App\Http\Resources\NotificationResource;
 use App\Models\DeviceToken;
 use App\Models\Notification;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
@@ -88,14 +88,16 @@ class NotificationController extends Controller
 
         $notifications = $query->paginate($validated['per_page'] ?? 20);
 
+        // Audit P1-10: `meta` collection dipatok pada tiga key canonical
+        // (`current_page`, `per_page`, `total`) sesuai spec 06 section 4.4.
+        // `last_page` dan `unread_count` tidak lagi dikirim; lihat
+        // KYUSUI_BACKEND_REPAIR_REPORT.md bagian Android Integration Impact.
         return response()->json([
             'data' => NotificationResource::collection($notifications),
             'meta' => [
                 'current_page' => $notifications->currentPage(),
-                'last_page' => $notifications->lastPage(),
                 'per_page' => $notifications->perPage(),
                 'total' => $notifications->total(),
-                'unread_count' => $user->appNotifications()->whereNull('read_at')->count(), // Bonus UX
             ],
             'message' => 'Data notifikasi berhasil diambil.',
         ], 200);
@@ -103,17 +105,18 @@ class NotificationController extends Controller
 
     /**
      * Mark a specific notification as read.
+     *
+     * Canonical contract `PATCH /notifications/{notification}/read`
+     * (spec 06 section 17 dan section 30). Backend dan Android sebelumnya
+     * memakai POST; ini coordinated contract migration, bukan backend bug.
      */
     public function read(Request $request, Notification $notification): JsonResponse
     {
         $user = $request->user();
 
-        // Defense in Depth: Pastikan notifikasi milik user yang login
-        abort_unless(
-            $notification->user_id === $user->id,
-            403,
-            'Anda tidak memiliki akses ke notifikasi ini.'
-        );
+        // Spec 06 section 5.6: notifikasi milik user lain harus 404, bukan 403,
+        // supaya keberadaan notifikasi tidak bisa ditebak.
+        abort_unless($notification->user_id === $user->id, 404);
 
         // Hanya update jika belum dibaca
         if ($notification->read_at === null) {

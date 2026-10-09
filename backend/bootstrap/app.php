@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -23,9 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(
             fn (Request $request) => $request->is('api/*') ? null : route('login'),
         );
+        // Single role middleware alias (audit P2-11). `EnsureUserRole` yang
+        // mengembalikan JsonResponse sendiri sudah dihapus supaya seluruh
+        // penolakan role melewati renderer exception di bawah ini.
         $middleware->alias([
             'role' => RoleMiddleware::class,
-            'ensure-role' => EnsureUserRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

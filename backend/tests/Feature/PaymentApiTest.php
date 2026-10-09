@@ -23,74 +23,111 @@ class PaymentApiTest extends TestCase
         parent::setUp();
 
         foreach (['CUSTOMER', 'OWNER', 'COURIER'] as $name) {
-            Role::create(['name' => $name]);
+            Role::create([
+                'name' => $name,
+                'display_name' => Role::defaultDisplayName($name),
+            ]);
         }
         Product::create(['name' => 'Galon', 'price' => 15000, 'availability' => true]);
         Storage::fake('local');
         Storage::disk('local')->put('qris/active.png', 'image-content');
-        BusinessSetting::create(['key' => 'qris_image_path', 'value' => 'qris/active.png']);
+        BusinessSetting::query()->updateOrCreate(
+            ['id' => BusinessSetting::SINGLETON_ID],
+            ['qris_image' => 'qris/active.png'],
+        );
     }
 
-    public function test_customer_uploads_qris_proof_with_metadata_and_idempotency(): void
+    public function test_customer_uploads_qris_proof_with_metadata_on_the_existing_payment_record(): void
     {
-        Storage::fake('local');
         [$customerUser, $customer] = $this->customer();
         $order = $this->order($customer, 'QRIS');
-        $payload = [
-            'idempotency_key' => 'payment-proof-key',
+        $paymentId = $order->payment->id;
+
+        $this->actingAs($customerUser)->post('/api/v1/customer/orders/'.$order->id.'/payment/proof', [
             'proof' => UploadedFile::fake()->image('proof.png', 200, 200),
-        ];
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.payment.payment_status', 'WAITING_VERIFICATION')
+            ->assertJsonPath('data.payment.proof.available', true);
 
-        $first = $this->actingAs($customerUser)->post('/api/v1/orders/'.$order->id.'/qris-proof', $payload);
-        $second = $this->actingAs($customerUser)->postJson('/api/v1/orders/'.$order->id.'/qris-proof', [
-            'idempotency_key' => 'payment-proof-key',
-        ]);
-
-        $first->assertOk()->assertJsonPath('data.status', 'WAITING_VERIFICATION');
-        $second->assertOk()->assertJsonPath('message', 'Bukti pembayaran dengan idempotency key tersebut sudah tersedia.');
+        $this->assertDatabaseCount('payments', 1);
         $this->assertDatabaseHas('payments', [
-            'id' => $order->payment->id,
-            'idempotency_key' => 'payment-proof-key',
+            'id' => $paymentId,
+            'payment_status' => 'WAITING_VERIFICATION',
             'proof_mime_type' => 'image/png',
         ]);
+        $this->assertNotNull(Payment::findOrFail($paymentId)->proof_checksum);
+        $this->assertNotNull(Payment::findOrFail($paymentId)->proof_size);
+    }
+
+    public function test_customer_can_read_the_payment_record_of_their_own_order(): void
+    {
+        [$customerUser, $customer] = $this->customer();
+        $order = $this->order($customer, 'QRIS');
+
+        $this->actingAs($customerUser)->getJson('/api/v1/customer/orders/'.$order->id.'/payment')
+            ->assertOk()
+            ->assertJsonPath('data.id', $order->payment->id)
+            ->assertJsonPath('data.payment_method', 'QRIS')
+            ->assertJsonPath('data.payment_status', 'PENDING');
     }
 
     public function test_owner_can_approve_qris_payment(): void
     {
-        Storage::fake('local');
         [$customerUser, $customer] = $this->customer();
         [$ownerUser] = $this->owner();
         $order = $this->order($customer, 'QRIS');
-        $this->actingAs($customerUser)->post('/api/v1/orders/'.$order->id.'/qris-proof', [
-            'idempotency_key' => 'verify-key',
+        $this->actingAs($customerUser)->post('/api/v1/customer/orders/'.$order->id.'/payment/proof', [
             'proof' => UploadedFile::fake()->image('proof.png', 200, 200),
         ])->assertOk();
 
-        $this->actingAs($ownerUser)->postJson('/api/v1/owner/payments/'.$order->payment->id.'/approve')
+        $this->actingAs($ownerUser)->postJson('/api/v1/owner/orders/'.$order->id.'/payment-verification', [
+            'action' => 'APPROVE',
+        ])
             ->assertOk()
-            ->assertJsonPath('data.status', 'PAID');
-        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'MENUNGGU_DIPROSES']);
+            ->assertJsonPath('data.payment.payment_status', 'PAID');
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'order_status' => 'MENUNGGU_DIPROSES']);
     }
 
     public function test_active_qris_response_does_not_expose_internal_path(): void
     {
-        Storage::fake('local');
-        Storage::disk('local')->put('qris/active.png', 'image-content');
         [$customerUser] = $this->customer();
 
-        $this->actingAs($customerUser)->getJson('/api/v1/payment/qris')
+        $this->actingAs($customerUser)->getJson('/api/v1/customer/payment/qris')
             ->assertOk()
-            ->assertJsonStructure(['data' => ['image_url'], 'message'])
+            ->assertJsonStructure(['data' => ['qris_image', 'updated_at'], 'message'])
+            ->assertJsonPath('data.qris_image', url('/api/v1/customer/payment/qris/image'))
             ->assertJsonMissingPath('data.path');
 
-        $imageResponse = $this->actingAs($customerUser)->get('/api/v1/payment/qris/image');
+        $imageResponse = $this->actingAs($customerUser)->get('/api/v1/customer/payment/qris/image');
         $imageResponse->assertOk();
         $this->actingAs($customerUser)
             ->withHeader('If-None-Match', $imageResponse->headers->get('ETag'))
-            ->get('/api/v1/payment/qris/image')
+            ->get('/api/v1/customer/payment/qris/image')
             ->assertStatus(304);
     }
 
+    public function test_customer_qris_endpoints_return_404_when_qris_is_not_configured(): void
+    {
+        BusinessSetting::query()->update(['qris_image' => null]);
+        [$customerUser] = $this->customer();
+
+        $this->actingAs($customerUser)->getJson('/api/v1/customer/payment/qris')->assertNotFound();
+        $this->actingAs($customerUser)->get('/api/v1/customer/payment/qris/image')->assertNotFound();
+    }
+
+    public function test_qris_image_endpoint_is_closed_to_unauthenticated_and_courier_role(): void
+    {
+        $this->get('/api/v1/customer/payment/qris/image')->assertUnauthorized();
+
+        $courierUser = User::factory()->create(['role_id' => Role::where('name', 'COURIER')->value('id')]);
+        $this->actingAs($courierUser)->get('/api/v1/customer/payment/qris/image')->assertForbidden();
+    }
+
+    /**
+     * @return array{0: User, 1: Customer}
+     */
     private function customer(): array
     {
         $user = User::factory()->create(['role_id' => Role::where('name', 'CUSTOMER')->value('id')]);
@@ -99,32 +136,35 @@ class PaymentApiTest extends TestCase
         return [$user, $customer];
     }
 
+    /**
+     * @return array{0: User}
+     */
     private function owner(): array
     {
-        $user = User::factory()->create(['role_id' => Role::where('name', 'OWNER')->value('id')]);
-
-        return [$user];
+        return [User::factory()->create(['role_id' => Role::where('name', 'OWNER')->value('id')])];
     }
 
     private function order(Customer $customer, string $method): Order
     {
         $order = $customer->orders()->create([
-            'status' => 'MENUNGGU_PEMBAYARAN',
-            'subtotal' => 15000,
+            'order_status' => 'MENUNGGU_PEMBAYARAN',
+            'subtotal_amount' => 15000,
             'delivery_fee' => 5000,
-            'total' => 20000,
+            'total_amount' => 20000,
             'delivery_address' => 'Jl. Depot',
+            'placed_at' => now(),
         ]);
         $order->items()->create([
             'product_id' => 1,
+            'product_name' => 'Galon',
             'quantity' => 1,
             'unit_price' => 15000,
             'line_total' => 15000,
         ]);
         Payment::create([
             'order_id' => $order->id,
-            'method' => $method,
-            'status' => 'PENDING',
+            'payment_method' => $method,
+            'payment_status' => 'PENDING',
             'amount' => 20000,
         ]);
 

@@ -575,6 +575,10 @@ Password tidak pernah dikembalikan.
 }
 ```
 
+**Format `verified_by` dan `verified_at`:**
+- `verified_by`: **Flat integer** (user ID), **bukan** nested object. Contoh: `5` (Owner) atau `20` (Courier). `null` bila payment belum `PAID`.
+- `verified_at`: **ISO 8601 timestamp string** (server time). Contoh: `"2026-09-30T10:15:00Z"`. `null` bila payment belum `PAID`.
+
 Provider fields tidak pernah dikembalikan.
 
 Tidak ada:
@@ -600,15 +604,38 @@ Jika file storage bersifat private, response dapat menggunakan authorized tempor
 
 ## 7.7 Tracking Resource
 
+Endpoint: `GET /customer/orders/{order}/tracking` (section 9.7).
+
+Response mengembalikan assignment aktif beserta riwayat lokasi (maksimal 10 titik, terbaru dulu).
+
 ```json
 {
-  "order_id": 1001,
+  "id": 501,
   "assignment_id": 501,
+  "order_id": 1001,
+  "courier_id": 20,
   "status": "ACTIVE",
+  "assigned_at": "2026-09-30T08:00:00Z",
+  "started_at": "2026-09-30T09:00:00Z",
+  "completed_at": null,
   "courier": {
     "id": 20,
     "name": "Andi"
   },
+  "locations": [
+    {
+      "latitude": -0.9480,
+      "longitude": 100.4180,
+      "accuracy_meters": 8.50,
+      "recorded_at": "2026-09-30T09:15:20Z"
+    },
+    {
+      "latitude": -0.9475,
+      "longitude": 100.4178,
+      "accuracy_meters": 9.20,
+      "recorded_at": "2026-09-30T09:10:15Z"
+    }
+  ],
   "location": {
     "latitude": -0.9480,
     "longitude": 100.4180,
@@ -617,6 +644,38 @@ Jika file storage bersifat private, response dapat menggunakan authorized tempor
   }
 }
 ```
+
+### Field Definitions
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | integer | No | Assignment ID (kanonik) |
+| `assignment_id` | integer | No | Alias untuk `id` (kompatibilitas mundur) |
+| `order_id` | integer | No | Order ID |
+| `courier_id` | integer | No | Courier ID |
+| `status` | string | No | Assignment status (`ASSIGNED`, `ACTIVE`, `COMPLETED`) |
+| `assigned_at` | timestamp | Yes | Waktu assignment dibuat |
+| `started_at` | timestamp | Yes | Waktu delivery dimulai |
+| `completed_at` | timestamp | Yes | Waktu delivery selesai |
+| `courier` | object | Yes | `{id, name}` courier yang ditugaskan |
+| `locations` | array | No | Riwayat lokasi (terbaru dulu, maksimal 10) |
+| `location` | object | Yes | Alias untuk `locations[0]` (kompatibilitas spec 7.7 lama) |
+
+### Location Item Fields
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `latitude` | decimal | No | Latitude (derajat) |
+| `longitude` | decimal | No | Longitude (derajat) |
+| `accuracy_meters` | decimal | Yes | Akurasi GPS (meter) |
+| `recorded_at` | timestamp | No | Waktu rekaman (ISO 8601) |
+
+### Behavior
+
+- Jika tidak ada assignment aktif: response `200 OK` dengan `"data": null` dan pesan `"Tracking location is not available yet."`
+- Jika assignment aktif tapi courier belum mengirim lokasi: `locations` kosong array `[]`, `location: null`
+- `locations` diurutkan `recorded_at` descending (terbaru dulu), dibatasi maksimal 10 item
+- `location` field adalah alias untuk `locations[0]` untuk kompatibilitas mundur dengan klien yang mengikuti spec 7.7 lama
 
 ---
 
@@ -657,9 +716,12 @@ Backend wajib memvalidasi:
 - required fields sesuai final account policy;
 - name;
 - phone uniqueness;
-- email uniqueness jika diberikan;
+- email is required, well-formed, unique, dan maksimal 255 karakter;
 - password strength;
 - password confirmation.
+
+`email` wajib, bukan opsional. Android mengirim field `email` pada setiap request
+dan menolak email kosong atau salah bentuk sebelum memanggil backend.
 
 ### Authorization
 
@@ -703,16 +765,22 @@ Public.
 
 ```json
 {
-  "login": "081234567890",
+  "email": "budi@example.com",
   "password": "secret-password"
 }
 ```
 
-Format `login` mengikuti final authentication decision project.
+Identitas login adalah `email`. Nomor telepon bukan field login dan tidak
+dikirim pada request ini; field `login` juga tidak ada di contract.
 
 ### Validation
 
-Backend wajib memvalidasi credential dan account status.
+Backend wajib memvalidasi credential dan account status. Aturan `email` pada
+backend adalah `required`, format email, dan `max:255`, sehingga email kosong
+atau salah bentuk ditolak dengan `422` sebelum kredensial diperiksa.
+
+Android memvalidasi bentuk email secara lokal untuk menghindari perjalanan yang
+pasti ditolak, tetapi backend tetap memvalidasi ulang.
 
 ### Success
 
@@ -730,7 +798,8 @@ Backend wajib memvalidasi credential dan account status.
 
 ### Errors
 
-`401` untuk credential tidak valid.
+- `422` format `email` atau `password` tidak valid;
+- `401` untuk credential tidak valid.
 
 ---
 
@@ -768,7 +837,19 @@ Sanctum.
 
 `200 OK`.
 
-Mengembalikan User Resource.
+User Resource dibungkus satu level di bawah `data`, bukan langsung di `data`:
+
+```json
+{
+  "data": {
+    "user": {}
+  },
+  "message": "Data pengguna berhasil dimuat."
+}
+```
+
+Android membaca `response.data.user`. Bentuk `{"data": {...user langsung...}}`
+tidak pernah dikirim untuk endpoint ini.
 
 ---
 
@@ -1710,12 +1791,18 @@ Conceptual resource:
     "payment_status": "WAITING_VERIFICATION",
     "proof": {
       "available": true,
-      "url": "<authorized-proof-url>"
+      "url": "/api/v1/owner/orders/1001/payment/proof?download=1"
     }
   },
   "message": "Payment proof retrieved."
 }
 ```
+
+**Format `proof.url`:**
+- URL absolut ke endpoint private file delivery: `/api/v1/owner/orders/{order}/payment/proof?download=1`
+- Memerlukan header `Authorization: Bearer <token>` dengan role `OWNER`
+- Query parameter `download=1` wajib untuk mengunduh file gambar (tanpa flag tersebut endpoint mengembalikan metadata JSON)
+- URL bersifat private dan memerlukan otorisasi Owner; bukan public URL
 
 Proof tidak boleh menjadi public URL tanpa authorization.
 
@@ -3127,13 +3214,64 @@ PUT   /owner/payment/qris
 
 ## COURIER
 
+Backend dan Android menggunakan arsitektur **assignment-centric**. Endpoint order-centric pada draft specification lama tidak diimplementasikan.
+
 ```text
-GET   /courier/orders
-GET   /courier/orders/{order}
-PATCH /courier/orders/{order}/status
-POST  /courier/orders/{order}/location
-POST  /courier/orders/{order}/payment-confirmation
+GET    /courier/assignments
+GET    /courier/assignments/{assignment}
+POST   /courier/assignments/{assignment}/start
+POST   /courier/assignments/{assignment}/location
+POST   /courier/assignments/{assignment}/cash/confirm
+POST   /courier/assignments/{assignment}/complete
+GET    /dashboard/courier
 ```
+
+### Courier Assignment Endpoints Detail
+
+#### GET /courier/assignments
+- **Auth**: `role:COURIER`
+- **Response**: `EnvelopeDto<List<CourierAssignmentDto>>` (array penuh, **tanpa paginasi/meta**)
+- **Deskripsi**: Mengembalikan seluruh assignment milik kurir terautentikasi, terbaru dulu.
+
+#### GET /courier/assignments/{assignment}
+- **Auth**: `role:COURIER` + ownership (404 jika bukan miliknya)
+- **Response**: `EnvelopeDto<CourierAssignmentDto>`
+- **Deskripsi**: Detail satu assignment termasuk order, payment, dan latest_location.
+
+#### POST /courier/assignments/{assignment}/start
+- **Auth**: `role:COURIER` + ownership
+- **Validasi**: assignment status = `ASSIGNED` DAN order_status = `DITUGASKAN`; kurir tidak boleh punya assignment `ACTIVE` lain
+- **Transisi**: assignment `ASSIGNED` → `ACTIVE`, order `DITUGASKAN` → `DALAM_PENGANTARAN`
+- **Response**: `EnvelopeDto<CourierAssignmentDto>`
+- **Notifikasi**: `DELIVERY_STARTED` ke customer
+
+#### POST /courier/assignments/{assignment}/location
+- **Auth**: `role:COURIER` + ownership
+- **Validasi**: assignment status = `ACTIVE` DAN order_status = `DALAM_PENGANTARAN`
+- **Body**: `latitude` (required, -90..90), `longitude` (required, -180..180), `accuracy_meters` (required, 0..10000), `recorded_at` (optional, ISO 8601), `idempotency_key` (optional, UUID)
+- **Validasi tambahan**: kecepatan ≤ 150 km/jam, timestamp harus monotonik naik
+- **Response**: `{ "accepted": true, "location": CourierLocationResource }`
+- **Notifikasi**: `TRACKING_AVAILABLE` ke customer (sekali per assignment)
+
+#### POST /courier/assignments/{assignment}/cash/confirm
+- **Auth**: `role:COURIER` + ownership
+- **Validasi**: assignment `ACTIVE`, order `DALAM_PENGANTARAN`, payment method = `CASH`, payment status = `PENDING`
+- **Body**: **tidak ada** (empty request)
+- **Transisi**: payment `PENDING` → `PAID`, `verified_by` = courier user, `verified_at` = server timestamp
+- **Response**: `EnvelopeDto<CourierCashReceiptDto>` (berisi `payment` resource)
+- **Notifikasi**: `PAYMENT_CASH_CONFIRMED` ke customer
+
+#### POST /courier/assignments/{assignment}/complete
+- **Auth**: `role:COURIER` + ownership
+- **Validasi**: assignment `ACTIVE`, order `DALAM_PENGANTARAN`, payment `PAID` (QRIS atau CASH)
+- **Transisi**: assignment `ACTIVE` → `COMPLETED`, order `DALAM_PENGANTARAN` → `SELESAI`
+- **Response**: `EnvelopeDto<CourierAssignmentDto>`
+- **Notifikasi**: `ORDER_COMPLETED` ke customer, courier, dan owner
+
+#### GET /dashboard/courier
+- **Auth**: `role:COURIER` + `throttle:20,1`
+- **Response**: `EnvelopeDto<CourierDashboardDto>`
+- **Deskripsi**: Ringkasan assignment hari ini, assignment aktif, dan statistik.
 
 ## NOTIFICATION
 
@@ -3142,6 +3280,32 @@ POST  /notifications/device-token
 GET   /notifications
 PATCH /notifications/{notification}/read
 ```
+
+## PRESERVED ENDPOINTS
+
+Endpoint berikut **tidak ada di katalog kanonik** (section 30) tetapi **aktif dipakai oleh klien Android** dan **dipertahankan untuk kompatibilitas mundur**. Menghapusnya akan memutus aplikasi yang berjalan.
+
+| Method | URI | Role | Controller | Alasan Preserved |
+|--------|-----|------|------------|------------------|
+| POST | `/auth/logout-all` | Sanctum | AuthController@logoutAllDevices | Session management (multi-device logout) |
+| POST | `/auth/refresh-token` | Sanctum | AuthController@refreshToken | Token rotation tanpa re-login |
+| GET | `/profile` | Sanctum | ProfileController@show | Profile non-role-specific (Owner/Courier) |
+| PUT | `/profile` | Sanctum | ProfileController@update | Profile update non-role-specific |
+| GET | `/products/{product}` | Sanctum | ProductController@show | Product detail (Customer) |
+| GET | `/customer/payment/qris/image` | CUSTOMER,OWNER | PaymentController@activeQrisImage | Private file delivery QRIS image |
+| POST | `/notifications/read-all` | Sanctum | NotificationController@readAll | Bulk mark-read |
+| GET | `/dashboard/customer` | CUSTOMER | DashboardController@customer | Dashboard summary |
+| GET | `/dashboard/owner` | OWNER | DashboardController@owner | Dashboard summary |
+| GET | `/dashboard/courier` | COURIER | DashboardController@courier | Dashboard summary |
+| GET | `/owner/products` | OWNER | ProductController@ownerIndex | Owner product management |
+| POST | `/owner/products` | OWNER | ProductController@store | Owner product management |
+| PUT | `/owner/products/{product}` | OWNER | ProductController@update | Owner product management |
+| DELETE | `/owner/products/{product}` | OWNER | ProductController@destroy | Owner product management |
+| GET | `/owner/couriers` | OWNER | OwnerController@couriers | Daftar kurir untuk assignment |
+| POST | `/customer/orders/{order}/cancel` | CUSTOMER | OrderController@cancel | Cancel order (Pilihan A: hanya MENUNGGU_PEMBAYARAN) |
+| POST | `/courier/orders/{order}/payment-confirmation` | COURIER | CourierController@confirmOrderPayment | Legacy CASH confirm (order-centric) |
+
+> **Catatan**: Endpoint `POST /courier/orders/{order}/payment-confirmation` memiliki fungsionalitas sama dengan `POST /courier/assignments/{assignment}/cash/confirm` (endpoint kanonik assignment-centric). Keduanya mengembalikan payload `data.payment` yang identik. Endpoint lama dipertahankan karena mungkin masih dipakai klien legacy; **tidak dihapus tanpa keputusan contract eksplisit**.
 
 ## REMOVED
 
@@ -3182,6 +3346,15 @@ CASH
 └── COURIER
       ├── View assigned CASH payment
       └── Confirm "Uang Diterima"
+
+COURIER (Assignment-centric)
+├── List assignments
+├── View assignment detail
+├── Start delivery
+├── Post location
+├── Confirm cash
+├── Complete delivery
+└── Dashboard
 ```
 
 ---
@@ -3253,12 +3426,14 @@ Courier delivers
    ↓
 Customer pays cash
    ↓
-POST /courier/orders/{order}/payment-confirmation
+POST /courier/assignments/{assignment}/cash/confirm
    ↓
 Backend validates assignment + payment state
    ↓
 PAID
 ```
+
+> **Catatan**: Endpoint lama `POST /courier/orders/{order}/payment-confirmation` dipertahankan sebagai `preserved` untuk kompatibilitas mundur, tetapi endpoint kanonik baru adalah assignment-centric.
 
 ---
 
@@ -3347,7 +3522,7 @@ API-PAY-030 Payment amount always follows authoritative order amount
 [ ] Order API
 [ ] Customer tracking API
 [ ] Owner order API
-[ ] Courier order API
+[ ] Courier assignment API
 [ ] Courier tracking API
 [ ] Notification API
 
