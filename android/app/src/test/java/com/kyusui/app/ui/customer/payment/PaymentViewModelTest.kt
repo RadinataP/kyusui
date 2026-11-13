@@ -293,8 +293,7 @@ class PaymentViewModelTest {
     }
 
     // --- Memilih metode ------------------------------------------------------
-
-    @Test
+@Test
     fun `memilih cash hanya mengirim method dan status datang dari backend`() =
         runTest(dispatcher) {
             givenActiveQris()
@@ -332,6 +331,7 @@ class PaymentViewModelTest {
         assertTrue(vm.uiState.value.selectState is SubmitState.Error)
     }
 
+    
     // --- Payment belum dibuat ----------------------------------------------
 
     @Test
