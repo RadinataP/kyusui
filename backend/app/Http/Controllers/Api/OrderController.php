@@ -260,8 +260,9 @@ class OrderController extends Controller
     /**
      * `POST /customer/orders/{order}/cancel`.
      *
-     * Keputusan bisnis (Pilihan A): pembatalan hanya diperbolehkan pada status
-     * `MENUNGGU_PEMBAYARAN`. Status lain ditolak dengan HTTP 409.
+     * Pembatalan pelanggan hanya diperbolehkan sebelum pesanan mulai diproses,
+     * yaitu ketika masih `MENUNGGU_PEMBAYARAN`. Setelah masuk tahap proses,
+     * perubahan/pembatalan harus ditangani pemilik depot.
      * Endpoint ini tidak ada di katalog spec 06 section 30, tetapi dipertahankan
      * untuk kompatibilitas mundur (preserved).
      */
@@ -274,7 +275,7 @@ class OrderController extends Controller
             abort_unless(
                 $lockedOrder->order_status === OrderStatus::MENUNGGU_PEMBAYARAN->value,
                 409,
-                'Pesanan tidak dapat dibatalkan pada status saat ini.',
+                'Pesanan tidak dapat dibatalkan karena sudah melewati tahap pembayaran awal atau mulai diproses.',
             );
 
             $lockedOrder->update(['order_status' => OrderStatus::DIBATALKAN->value]);
