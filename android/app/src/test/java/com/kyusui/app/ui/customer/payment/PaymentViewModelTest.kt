@@ -196,8 +196,7 @@ class PaymentViewModelTest {
     }
 
     // --- QRIS belum dikonfigurasi -------------------------------------------
-
-    @Test
+@Test
     fun `qris 404 terbaca sebagai belum dikonfigurasi dan tidak retryable`() =
         runTest(dispatcher) {
             givenNoActiveQris()
@@ -291,6 +290,7 @@ class PaymentViewModelTest {
 
         coVerify(exactly = 1) { repository.selectPaymentMethod(ORDER_ID, PaymentMethod.CASH) }
     }
+    
 
     // --- Memilih metode ------------------------------------------------------
 
