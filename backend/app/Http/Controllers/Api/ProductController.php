@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of available products for customers.
-     */
+    /** Daftar produk aktif untuk pelanggan. */
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -21,11 +19,8 @@ class ProductController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
-        $query = Product::query()
-            ->where('availability', true)
-            ->latest('id');
+        $query = Product::query()->where('availability', true)->orderBy('id');
 
-        // Logika pencarian sederhana
         if (! empty($validated['search'])) {
             $query->where('name', 'like', '%'.$validated['search'].'%');
         }
@@ -40,12 +35,10 @@ class ProductController extends Controller
                 'total' => $products->total(),
             ],
             'message' => 'Data produk berhasil diambil.',
-        ], 200);
+        ]);
     }
 
-    /**
-     * Display the specified product.
-     */
+    /** Detail produk aktif. */
     public function show(Request $request, Product $product): JsonResponse
     {
         abort_unless($product->availability, 404, 'Produk tidak ditemukan atau tidak tersedia.');
@@ -53,23 +46,17 @@ class ProductController extends Controller
         return response()->json([
             'data' => new ProductResource($product),
             'message' => 'Data produk berhasil diambil.',
-        ], 200);
+        ]);
     }
 
-    /**
-     * Display a listing of all products for Owner.
-     */
+    /** Daftar seluruh produk untuk Owner, termasuk produk nonaktif. */
     public function ownerIndex(Request $request): JsonResponse
     {
         $this->authorizeOwner($request);
 
-        $validated = $request->validate([
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
-        ]);
-
         $products = Product::query()
-            ->latest('id')
-            ->paginate($validated['per_page'] ?? 10);
+            ->orderBy('id')
+            ->paginate($request->integer('per_page', 20));
 
         return response()->json([
             'data' => ProductResource::collection($products),
@@ -79,12 +66,10 @@ class ProductController extends Controller
                 'total' => $products->total(),
             ],
             'message' => 'Data semua produk berhasil diambil.',
-        ], 200);
+        ]);
     }
 
-    /**
-     * Store a newly created product.
-     */
+    /** Owner dapat menambahkan produk dan menentukan harganya. */
     public function store(Request $request): JsonResponse
     {
         $this->authorizeOwner($request);
@@ -92,12 +77,11 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'price' => ['required', 'numeric', 'min:0', 'max:99999999'], // Batas atas untuk mencegah typo ekstrem
+            'price' => ['required', 'numeric', 'gt:0', 'max:99999999'],
             'availability' => ['sometimes', 'boolean'],
         ]);
 
         $validated['availability'] = $validated['availability'] ?? true;
-
         $product = Product::create($validated);
 
         Log::info('Product created by owner', [
@@ -111,17 +95,15 @@ class ProductController extends Controller
         ], 201);
     }
 
-    /**
-     * Update the specified product.
-     */
+    /** Owner dapat mengubah nama, deskripsi, harga, dan ketersediaan. */
     public function update(Request $request, Product $product): JsonResponse
     {
         $this->authorizeOwner($request);
 
         $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:120'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'price' => ['sometimes', 'numeric', 'min:0', 'max:99999999'],
+            'name' => ['sometimes', 'required', 'string', 'max:120'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'price' => ['sometimes', 'required', 'numeric', 'gt:0', 'max:99999999'],
             'availability' => ['sometimes', 'boolean'],
         ]);
 
@@ -130,23 +112,19 @@ class ProductController extends Controller
         Log::info('Product updated by owner', [
             'product_id' => $product->id,
             'user_id' => $request->user()->id,
-            'changes' => $product->getChanges(), // Log perubahan spesifik
+            'changes' => $product->getChanges(),
         ]);
 
         return response()->json([
             'data' => new ProductResource($product->fresh()),
             'message' => 'Produk berhasil diperbarui.',
-        ], 200);
+        ]);
     }
 
-    /**
-     * Soft-disable the specified product.
-     * Menjaga integritas referensial dengan order_items yang sudah ada.
-     */
+    /** Nonaktifkan produk tanpa menghapus histori transaksi. */
     public function destroy(Request $request, Product $product): JsonResponse
     {
         $this->authorizeOwner($request);
-
         $product->update(['availability' => false]);
 
         Log::info('Product disabled by owner', [
@@ -157,17 +135,13 @@ class ProductController extends Controller
         return response()->json([
             'data' => null,
             'message' => 'Produk berhasil dinonaktifkan.',
-        ], 200);
+        ]);
     }
 
-    /**
-     * Helper method to enforce Owner role authorization (Defense in Depth).
-     */
     private function authorizeOwner(Request $request): void
     {
         $user = $request->user();
 
-        // Null-safe check untuk mencegah Fatal Error jika middleware bypass
         abort_unless(
             $user !== null && $user->role?->name === 'OWNER',
             403,
