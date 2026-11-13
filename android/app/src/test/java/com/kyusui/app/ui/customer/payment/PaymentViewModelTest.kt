@@ -293,7 +293,8 @@ class PaymentViewModelTest {
     }
 
     // --- Memilih metode ------------------------------------------------------
-@Test
+
+    @Test
     fun `memilih cash hanya mengirim method dan status datang dari backend`() =
         runTest(dispatcher) {
             givenActiveQris()
